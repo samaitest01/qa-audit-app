@@ -29,7 +29,7 @@ export async function middleware(req) {
   if (pathname.startsWith("/api")) {
     return new NextResponse(JSON.stringify({ error: "Not authenticated" }), { status: 401, headers: { "content-type": "application/json" } });
   }
-  const loginUrl = new URL("/login", req.url);
+  const loginUrl = new URL("/login", req.nextUrl.origin);
   return NextResponse.redirect(loginUrl);
 }
 
