@@ -8,6 +8,25 @@ import { scoreFor, pct, scoreColor } from "../lib/scoring";
 const STATUSES = ["Yes", "Partial", "No", "N/A"];
 const STATUS_COLOR = { Yes: "#4c9a6a", Partial: "#d1a13f", No: "#c25450", "N/A": "#5b6572" };
 
+function quarterLabel(dateString) {
+  try {
+    const date = new Date(dateString);
+    if (Number.isNaN(date)) return "Unknown";
+    const q = Math.floor(date.getMonth() / 3) + 1;
+    return `Q${q} ${date.getFullYear()}`;
+  } catch {
+    return "Unknown";
+  }
+}
+
+function groupCounts(items, keyFn) {
+  return items.reduce((acc, item) => {
+    const key = keyFn(item);
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
+}
+
 async function api(path, options) {
   const res = await fetch(`/api/${path}`, {
     ...options,
@@ -169,6 +188,7 @@ export default function QAAuditApp() {
         </div>
         <nav style={styles.nav}>
           <button className={`navBtn ${view === "form" ? "navBtnActive" : ""}`} onClick={() => setView("form")}><ClipboardList size={16} /> New / Edit Audit</button>
+          <button className={`navBtn ${view === "dashboard" ? "navBtnActive" : ""}`} onClick={() => setView("dashboard")}><Layers size={16} /> Dashboard</button>
           <button className={`navBtn ${view === "history" ? "navBtnActive" : ""}`} onClick={() => setView("history")}><History size={16} /> Audit History</button>
           <button className={`navBtn ${view === "projects" ? "navBtnActive" : ""}`} onClick={() => setView("projects")}><FolderKanban size={16} /> Projects</button>
           <button className={`navBtn ${view === "templates" ? "navBtnActive" : ""}`} onClick={() => setView("templates")}><Layers size={16} /> Domains & Templates</button>
@@ -671,10 +691,10 @@ function HistoryView({ audits, onOpen, onDelete, onReport }) {
       <h1 style={styles.h1}>Audit History</h1>
       <p style={styles.subtle}>{audits.length} audit{audits.length !== 1 ? "s" : ""} recorded.</p>
       <div style={styles.table}>
-        <div style={styles.tableHeadRow}><span>Project</span><span>Auditee</span><span>Auditor</span><span>Date</span><span>Score</span><span></span></div>
+        <div style={styles.tableHeadRow}><span>Project</span><span>Quarter</span><span>Auditee</span><span>Auditor</span><span>Date</span><span>Score</span><span></span></div>
         {audits.map((a) => (
           <div key={a.id} style={styles.tableRow}>
-            <span style={styles.tableProject}>{a.projectName || "Untitled"}</span><span>{a.auditee}</span><span>{a.auditor}</span><span>{a.date}</span>
+            <span style={styles.tableProject}>{a.projectName || "Untitled"}</span><span>{quarterLabel(a.date)}</span><span>{a.auditee}</span><span>{a.auditor}</span><span>{a.date}</span>
             <span style={{ color: scoreColor(a.score), fontWeight: 600 }}>{pct(a.score)}</span>
             <span style={styles.rowActions}>
               <button className="iconBtn" title="Open report" onClick={() => onReport(a)}><FileDown size={14} /></button>
@@ -685,6 +705,54 @@ function HistoryView({ audits, onOpen, onDelete, onReport }) {
             </span>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function DashboardView({ audits, projects }) {
+  const quarterCounts = groupCounts(audits, (a) => quarterLabel(a.date));
+  const projectCounts = groupCounts(audits, (a) => a.projectName || "Untitled");
+  const recentAudits = audits.slice(0, 10);
+
+  return (
+    <div>
+      <h1 style={styles.h1}>Audit Dashboard</h1>
+      <p style={styles.subtle}>Track audits by quarter and project so you can see where your QA program is growing.</p>
+      <div style={styles.dashboardGrid}>
+        <div style={styles.dashboardCard}><div style={styles.dashboardCardLabel}>Total audits</div><div style={styles.dashboardCardValue}>{audits.length}</div></div>
+        <div style={styles.dashboardCard}><div style={styles.dashboardCardLabel}>Projects audited</div><div style={styles.dashboardCardValue}>{Object.keys(projectCounts).length}</div></div>
+        <div style={styles.dashboardCard}><div style={styles.dashboardCardLabel}>Audit quarters</div><div style={styles.dashboardCardValue}>{Object.keys(quarterCounts).length}</div></div>
+      </div>
+      <div style={styles.sectionSplit}>
+        <div style={styles.dashboardSection}>
+          <div style={styles.sectionTitle}>Audits by quarter</div>
+          <div style={styles.dashboardList}>
+            {Object.entries(quarterCounts).sort().map(([quarter, count]) => (
+              <div key={quarter} style={styles.dashboardListItem}><span>{quarter}</span><strong>{count}</strong></div>
+            ))}
+          </div>
+        </div>
+        <div style={styles.dashboardSection}>
+          <div style={styles.sectionTitle}>Top audited projects</div>
+          <div style={styles.dashboardList}>
+            {Object.entries(projectCounts).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([project, count]) => (
+              <div key={project} style={styles.dashboardListItem}><span>{project}</span><strong>{count}</strong></div>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div style={{ marginTop: 24 }}>
+        <div style={styles.sectionTitle}>Recent audits</div>
+        <div style={styles.table}>
+          <div style={styles.tableHeadRow}><span>Project</span><span>Quarter</span><span>Auditor</span><span>Date</span><span>Score</span></div>
+          {recentAudits.map((a) => (
+            <div key={a.id} style={styles.tableRow}>
+              <span style={styles.tableProject}>{a.projectName || "Untitled"}</span><span>{quarterLabel(a.date)}</span><span>{a.auditor}</span><span>{a.date}</span>
+              <span style={{ color: scoreColor(a.score), fontWeight: 600 }}>{pct(a.score)}</span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -713,7 +781,7 @@ function ReportView({ audit, items, domains, onBack }) {
         </div>
         <div style={styles.reportMetaGrid}>
           <div><b>Auditee:</b> {audit.auditee}</div><div><b>Auditor:</b> {audit.auditor}</div>
-          <div><b>Date:</b> {audit.date}</div><div><b>Coverage:</b> {audit.answeredCount}/{audit.totalCount} items</div>
+          <div><b>Quarter:</b> {quarterLabel(audit.date)}</div><div><b>Coverage:</b> {audit.answeredCount}/{audit.totalCount} items</div>
         </div>
         {groups.map(({ domain, categories }) => (
           <div key={domain.id} style={{ marginTop: 20 }}>
