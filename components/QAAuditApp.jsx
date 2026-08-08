@@ -124,7 +124,11 @@ export default function QAAuditApp() {
       }
       setActiveAuditId(saved.id);
       showToast("Audit saved.");
-    } catch (e) { showToast(e.message); }
+      return saved;
+    } catch (e) {
+      showToast(e.message);
+      throw e;
+    }
   };
   const deleteAudit = async (id) => {
     await api(`audits/${id}`, { method: "DELETE" });
@@ -225,6 +229,7 @@ function AuditFormView({ domains, items, projects, audits, activeAuditId, setAct
   const [answers, setAnswers] = useState(existing?.answers || {});
   const [openCategory, setOpenCategory] = useState(null);
   const [query, setQuery] = useState("");
+  const [saveAttempted, setSaveAttempted] = useState(false);
 
   useEffect(() => {
     if (existing) {
@@ -234,6 +239,9 @@ function AuditFormView({ domains, items, projects, audits, activeAuditId, setAct
   }, [activeAuditId]); // eslint-disable-line
 
   const project = projects.find((p) => p.id === projectId);
+  const missingProject = saveAttempted && !project;
+  const missingAuditee = saveAttempted && !auditee.trim();
+  const missingAuditor = saveAttempted && !auditor.trim();
   const domainIds = project ? Array.from(new Set(["core", ...(project.domainIds || [])])) : [];
 
   const sections = useMemo(() => {
@@ -259,15 +267,30 @@ function AuditFormView({ domains, items, projects, audits, activeAuditId, setAct
 
   const setAnswer = (id, patch) => setAnswers((prev) => ({ ...prev, [id]: { ...prev[id], ...patch } }));
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    setSaveAttempted(true);
     if (!project) { showToast("Pick a project first."); return; }
     if (!auditee.trim() || !auditor.trim()) { showToast("Add auditee and auditor before saving."); return; }
-    onSave({
-      id: activeAuditId,
-      projectId: project.id, projectName: project.name, client: project.client, domainIds,
-      auditee, auditor, date, answers,
-      score: overallScore, answeredCount, totalCount: allItems.length,
+    const incomplete = allItems.find((q) => {
+      const answer = answers[q.id] || {};
+      return !answer.status || !answer.comment || !answer.comment.trim();
     });
+    if (incomplete) {
+      showToast("All checklist items require a status and a comment before saving.");
+      return;
+    }
+
+    try {
+      await onSave({
+        id: activeAuditId,
+        projectId: project.id, projectName: project.name, client: project.client, domainIds,
+        auditee, auditor, date, answers,
+        score: overallScore, answeredCount, totalCount: allItems.length,
+      });
+      startNew();
+    } catch (e) {
+      showToast(e.message || "Unable to save audit.");
+    }
   };
 
   const startNew = () => {
@@ -302,14 +325,14 @@ function AuditFormView({ domains, items, projects, audits, activeAuditId, setAct
       </div>
 
       <div style={styles.metaGrid}>
-        <Field label="Project">
-          <select value={projectId} onChange={(e) => setProjectId(e.target.value)}>
+        <Field label="Project" error={missingProject}>
+          <select value={projectId} onChange={(e) => setProjectId(e.target.value)} style={missingProject ? { borderColor: "#e08480" } : {}}>
             <option value="">Select a project…</option>
             {projects.map((p) => <option key={p.id} value={p.id}>{p.name} ({p.client})</option>)}
           </select>
         </Field>
-        <Field label="Auditee"><input placeholder="Person being audited" value={auditee} onChange={(e) => setAuditee(e.target.value)} /></Field>
-        <Field label="Auditor"><input placeholder="Person conducting the audit" value={auditor} onChange={(e) => setAuditor(e.target.value)} /></Field>
+        <Field label="Auditee" error={missingAuditee}><input placeholder="Person being audited" value={auditee} onChange={(e) => setAuditee(e.target.value)} style={missingAuditee ? { borderColor: "#e08480" } : {}} /></Field>
+        <Field label="Auditor" error={missingAuditor}><input placeholder="Person conducting the audit" value={auditor} onChange={(e) => setAuditor(e.target.value)} style={missingAuditor ? { borderColor: "#e08480" } : {}} /></Field>
         <Field label="Audit date"><input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></Field>
       </div>
 
@@ -367,7 +390,7 @@ function AuditFormView({ domains, items, projects, audits, activeAuditId, setAct
                       </button>
                       {isOpen && (
                         <div style={styles.itemList}>
-                          {cat.items.map((q) => <ChecklistRow key={q.id} q={q} value={answers[q.id]} onChange={(p) => setAnswer(q.id, p)} />)}
+                          {cat.items.map((q) => <ChecklistRow key={q.id} q={q} value={answers[q.id]} onChange={(p) => setAnswer(q.id, p)} saveAttempted={saveAttempted} />)}
                         </div>
                       )}
                     </div>
@@ -382,8 +405,11 @@ function AuditFormView({ domains, items, projects, audits, activeAuditId, setAct
   );
 }
 
-function ChecklistRow({ q, value, onChange }) {
+function ChecklistRow({ q, value, onChange, saveAttempted }) {
   const status = value?.status;
+  const comment = value?.comment || "";
+  const missingStatus = saveAttempted && !status;
+  const missingComment = saveAttempted && !comment.trim();
   return (
     <div style={styles.itemRow}>
       <div style={styles.itemTop}>
@@ -392,7 +418,7 @@ function ChecklistRow({ q, value, onChange }) {
         <span style={styles.itemText}>{q.item}</span>
       </div>
       <div style={styles.itemControls}>
-        <div style={styles.segmented}>
+        <div style={{ ...styles.segmented, borderColor: missingStatus ? "#e08480" : undefined }}>
           {STATUSES.map((s) => (
             <button key={s} onClick={() => onChange({ status: s })} className="statusBtn"
               style={{ background: status === s ? STATUS_COLOR[s] : "transparent", color: status === s ? "#0e1319" : "#aab4bf", borderColor: status === s ? STATUS_COLOR[s] : "#2a3440" }}>
@@ -400,13 +426,20 @@ function ChecklistRow({ q, value, onChange }) {
             </button>
           ))}
         </div>
-        <input style={styles.commentInput} placeholder="Comment (optional)" value={value?.comment || ""} onChange={(e) => onChange({ comment: e.target.value })} />
+        <div style={{ flex: 1 }}>
+          <input style={{ ...styles.commentInput, borderColor: missingComment ? "#e08480" : styles.commentInput.border }} placeholder="Comment (required)" value={comment} onChange={(e) => onChange({ comment: e.target.value })} />
+          {(missingStatus || missingComment) && (
+            <div style={styles.validationHint}>
+              {missingStatus ? "Status is required." : ""} {missingComment ? "Comment is required." : ""}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
-function Field({ label, children }) { return <label style={styles.field}><span style={styles.fieldLabel}>{label}</span>{children}</label>; }
+function Field({ label, children, error }) { return <label style={styles.field}><span style={{ ...styles.fieldLabel, color: error ? "#e08480" : undefined }}>{label}</span>{children}</label>; }
 
 // ===========================================================================
 function ChangePasswordView({ showToast }) {
@@ -754,6 +787,7 @@ const styles = {
   weightTag: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 10.5, color: "#7c8794" },
   itemControls: { display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" },
   commentInput: { flex: 1, minWidth: 200, background: "#171f28", border: "1px solid #232d38", borderRadius: 8, padding: "7px 10px", color: "#eef1f4", fontSize: 12.5, outline: "none" },
+  validationHint: { marginTop: 6, color: "#e08480", fontSize: 11, lineHeight: 1.3 },
   toast: { position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)", background: "#1c242e", border: "1px solid #2c3742", color: "#eef1f4", padding: "10px 18px", borderRadius: 10, fontSize: 13 },
   emptyState: { textAlign: "center", padding: "60px 20px", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 },
   table: { marginTop: 18, border: "1px solid #1f2933", borderRadius: 12, overflow: "hidden" },
