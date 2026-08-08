@@ -46,6 +46,15 @@ create table if not exists audits (
 create index if not exists audits_project_idx on audits(project_id);
 create index if not exists audits_saved_at_idx on audits(saved_at desc);
 
+-- Stores the app's shared login password (hashed, never plaintext) plus
+-- any other simple app-wide settings later. Set via the app's own
+-- first-run setup screen — never edited directly.
+create table if not exists app_settings (
+  key text primary key,
+  value text,
+  updated_at timestamptz not null default now()
+);
+
 -- Row Level Security: enabled below as defense-in-depth. The app's API
 -- routes always use the service_role key (which bypasses RLS by design),
 -- so this doesn't change how the app behaves — it just ensures that if a
@@ -55,3 +64,4 @@ alter table domains enable row level security;
 alter table checklist_items enable row level security;
 alter table projects enable row level security;
 alter table audits enable row level security;
+alter table app_settings enable row level security;

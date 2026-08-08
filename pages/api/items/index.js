@@ -1,4 +1,4 @@
-import { supabaseAdmin } from "../../../lib/supabaseAdmin";
+const { supabaseAdmin } = require("../../../lib/supabaseAdmin");
 import { uid } from "../../../lib/scoring";
 
 export default async function handler(req, res) {

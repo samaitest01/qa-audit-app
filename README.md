@@ -30,12 +30,11 @@ automatically the first time the app opens — nothing to run manually.
 
 1. Go to **vercel.com** → sign up using your GitHub account (this connects them automatically).
 2. Click **Add New** → **Project**. Find your `qa-audit-app` repo in the list and click **Import**.
-3. Before clicking Deploy, expand **Environment Variables** and add four:
+3. Before clicking Deploy, expand **Environment Variables** and add three:
    | Name | Value |
    |---|---|
    | `SUPABASE_URL` | the Project URL you copied in Step 1.4 |
    | `SUPABASE_SERVICE_ROLE_KEY` | the service_role key you copied in Step 1.4 |
-   | `SITE_PASSWORD` | a password your QA team will use to get in — pick anything |
    | `SESSION_SECRET` | any long random string (e.g. mash the keyboard for 30+ characters) — this isn't something anyone types in, it's just used internally to sign login sessions |
 4. Click **Deploy**. Wait ~1-2 minutes.
 5. Vercel gives you a link like `https://qa-audit-app-yourname.vercel.app` — **that's your live app.** Open it. The checklist data loads itself automatically on this first visit.
@@ -50,9 +49,9 @@ If you ever want to tweak the code: on GitHub, open the file, click the pencil (
 
 ## Security — what's protected now vs. still open
 
-- **Password gate**: the whole app now sits behind one shared team password (`SITE_PASSWORD`) — nobody gets in without it, including the API itself. Share the password with your QA team directly (not in the URL, not in a public place).
-- **Row Level Security** is enabled on all 4 database tables, as defense-in-depth.
-- **Still open**: this is one shared password for the whole team, not individual accounts — there's no way to tell which auditor did what beyond what they type into the Auditor field, and everyone who has the password can edit or delete anything. That's a reasonable tradeoff for an internal pilot; real per-person accounts (via Supabase Auth) are the natural next step if this grows beyond a small trusted team or starts holding anything genuinely client-confidential.
+- **Password gate**: the whole app sits behind one shared team password — set it yourself the very first time you open the deployed app (you'll see a "set up your password" screen instead of a login screen). No Vercel involvement needed for this, and no redeploy needed if you ever change it — there's a "Change Password" option inside the app itself.
+- **Row Level Security** is enabled on all database tables, as defense-in-depth.
+- **Still open**: this is one shared password for the whole team, not individual accounts — everyone who has it can edit or delete anything, and there's no way to tell which auditor did what beyond what they type into the Auditor field. Reasonable for an internal pilot; real per-person accounts are the natural next step if this grows beyond a small trusted team.
 - **Before uploading to GitHub**: always double-check `.env.local` (if you created one for local testing) is NOT among the files you drag in — it contains real secrets. `.gitignore` is included for anyone using real `git`, but the drag-and-drop web upload doesn't check it, so verify by hand.
 
 ## If something goes wrong

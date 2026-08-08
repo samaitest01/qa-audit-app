@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   ClipboardList, History, ChevronDown, Save, Trash2, X, CheckCircle2, Search,
-  FileDown, Layers, FolderKanban, Plus, Pencil, ClipboardPaste,
+  FileDown, Layers, FolderKanban, Plus, Pencil, ClipboardPaste, KeyRound,
 } from "lucide-react";
 import { scoreFor, pct, scoreColor } from "../lib/scoring";
 
@@ -168,6 +168,7 @@ export default function QAAuditApp() {
           <button className={`navBtn ${view === "history" ? "navBtnActive" : ""}`} onClick={() => setView("history")}><History size={16} /> Audit History</button>
           <button className={`navBtn ${view === "projects" ? "navBtnActive" : ""}`} onClick={() => setView("projects")}><FolderKanban size={16} /> Projects</button>
           <button className={`navBtn ${view === "templates" ? "navBtnActive" : ""}`} onClick={() => setView("templates")}><Layers size={16} /> Domains & Templates</button>
+          <button className={`navBtn ${view === "password" ? "navBtnActive" : ""}`} onClick={() => setView("password")}><KeyRound size={16} /> Change Password</button>
         </nav>
         <div style={styles.sideStat}>
           <div style={styles.sideStatLabel}>Projects · Audits</div>
@@ -207,6 +208,7 @@ export default function QAAuditApp() {
             onAddItem={addItem} onBulkImport={bulkImportItems} onUpdateItem={updateItem} onDeleteItem={deleteItem}
           />
         )}
+        {view === "password" && <ChangePasswordView showToast={showToast} />}
       </main>
       {toast && <div style={styles.toast}>{toast}</div>}
     </div>
@@ -407,6 +409,43 @@ function ChecklistRow({ q, value, onChange }) {
 function Field({ label, children }) { return <label style={styles.field}><span style={styles.fieldLabel}>{label}</span>{children}</label>; }
 
 // ===========================================================================
+function ChangePasswordView({ showToast }) {
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    if (next !== confirm) { showToast("New passwords don't match."); return; }
+    setBusy(true);
+    try {
+      await api("auth/change-password", { method: "POST", body: JSON.stringify({ currentPassword: current, newPassword: next }) });
+      showToast("Password changed. Everyone will need to log in again with the new one.");
+      setCurrent(""); setNext(""); setConfirm("");
+    } catch (e) {
+      showToast(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div>
+      <h1 style={styles.h1}>Change Password</h1>
+      <p style={styles.subtle}>This changes the shared password everyone on the team uses to get in.</p>
+      <form onSubmit={submit} style={{ ...styles.editorPanel, maxWidth: 360 }}>
+        <Field label="Current password"><input type="password" value={current} onChange={(e) => setCurrent(e.target.value)} /></Field>
+        <div style={{ height: 12 }} />
+        <Field label="New password"><input type="password" value={next} onChange={(e) => setNext(e.target.value)} /></Field>
+        <div style={{ height: 12 }} />
+        <Field label="Confirm new password"><input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} /></Field>
+        <button type="submit" className="primaryBtn" disabled={busy} style={{ marginTop: 16 }}>{busy ? "Saving…" : "Change password"}</button>
+      </form>
+    </div>
+  );
+}
+
 function ProjectsView({ projects, domains, onSave, onDelete }) {
   const [editing, setEditing] = useState(null);
   const [confirmId, setConfirmId] = useState(null);

@@ -1,4 +1,4 @@
-import { supabaseAdmin } from "../../../lib/supabaseAdmin";
+const { supabaseAdmin } = require("../../../lib/supabaseAdmin");
 
 export default async function handler(req, res) {
   const { id } = req.query;

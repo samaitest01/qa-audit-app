@@ -1,5 +1,5 @@
 const crypto = require("crypto");
-const { getPasswordHash, verifyPassword } = require("../../../lib/authSettings");
+const { getPasswordHash, setPasswordHash, hashPassword } = require("../../../lib/authSettings");
 
 const COOKIE_NAME = "qa_auth";
 
@@ -7,13 +7,16 @@ export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   const { password } = req.body || {};
+  if (!password || password.length < 4) return res.status(400).json({ error: "Password must be at least 4 characters." });
+
   const secret = process.env.SESSION_SECRET;
   if (!secret) return res.status(500).json({ error: "Server is missing SESSION_SECRET — set it in Vercel's Environment Variables." });
 
   try {
-    const hash = await getPasswordHash();
-    if (!hash) return res.status(409).json({ error: "No password has been set up yet.", needsSetup: true });
-    if (!password || !verifyPassword(password, hash)) return res.status(401).json({ error: "Incorrect password." });
+    const existing = await getPasswordHash();
+    if (existing) return res.status(409).json({ error: "A password is already set up for this app." });
+
+    await setPasswordHash(hashPassword(password));
 
     const token = crypto.createHmac("sha256", secret).update("authenticated").digest("hex");
     const secureFlag = process.env.NODE_ENV === "production" ? "; Secure" : "";
