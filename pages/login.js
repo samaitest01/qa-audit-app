@@ -25,7 +25,8 @@ export default function Login() {
     }
     setLoading(true);
     try {
-      const endpoint = mode === "setup" ? "/api/auth/setup" : "/api/auth/login";
+      const apiPath = mode === "setup" ? "/api/auth/setup" : "/api/auth/login";
+      const endpoint = `${window.location.origin}${apiPath}`;
       const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
