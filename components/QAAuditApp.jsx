@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import * as XLSX from "xlsx";
 import {
   ClipboardList, History, ChevronDown, Save, Trash2, X, CheckCircle2, Search,
   FileDown, Layers, FolderKanban, Plus, Pencil, ClipboardPaste, KeyRound,
+  Calendar, TrendingUp, Percent,
 } from "lucide-react";
 import { scoreFor, pct, scoreColor } from "../lib/scoring";
 
@@ -33,8 +35,12 @@ async function api(path, options) {
     headers: { "Content-Type": "application/json", ...(options?.headers || {}) },
   });
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || `Request to /api/${path} failed (${res.status})`);
+    const contentType = res.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || `Request to /api/${path} failed (${res.status})`);
+    }
+    throw new Error(`Request to /api/${path} failed (${res.status}): ${await res.text()}`);
   }
   if (res.status === 204) return null;
   return res.json();
@@ -211,6 +217,7 @@ export default function QAAuditApp() {
             onSave={saveAudit} showToast={showToast}
           />
         )}
+        {view === "dashboard" && <DashboardView audits={audits} projects={projects} />}
         {view === "history" && (
           <HistoryView
             audits={audits}
@@ -630,13 +637,62 @@ function parseBulkRows(text) {
   }).filter((r) => r.category && r.item);
 }
 
+function parseExcelRows(rows) {
+  if (!rows || rows.length === 0) return [];
+  const first = rows[0].map((cell) => String(cell || "").trim().toLowerCase());
+  let start = 0;
+  let colCategory = 0, colQuestion = 1, colWeight = 2, colType = 3;
+  if (first.some((cell) => cell === "category") && first.some((cell) => cell === "question")) {
+    start = 1;
+    colCategory = first.findIndex((cell) => cell === "category");
+    colQuestion = first.findIndex((cell) => cell === "question" || cell === "question text");
+    colWeight = first.findIndex((cell) => cell === "weight");
+    colType = first.findIndex((cell) => cell === "type" || cell === "mandatory/optional");
+    if (colQuestion === -1) colQuestion = 1;
+  }
+  return rows.slice(start).map((row) => {
+    const cols = Array.isArray(row) ? row : [];
+    const category = String(cols[colCategory] || "").trim();
+    const item = String(cols[colQuestion] || "").trim();
+    let weight = parseInt(String(cols[colWeight] || "").trim(), 10);
+    if (!weight || weight < 1 || weight > 5) weight = 3;
+    let type = String(cols[colType] || "").trim();
+    type = /optional/i.test(type) ? "Optional" : "Mandatory";
+    return { category, item, weight, type };
+  }).filter((r) => r.category && r.item);
+}
+
 function TemplateEditor({ domainId, items, onAddItem, onBulkImport, onUpdateItem, onDeleteItem }) {
   const [draft, setDraft] = useState({ category: "", item: "", weight: 3, type: "Mandatory" });
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkText, setBulkText] = useState("");
+  const [fileError, setFileError] = useState("");
+  const [uploadedRows, setUploadedRows] = useState([]);
   const byCat = [];
   items.forEach((it) => { let b = byCat.find((x) => x.category === it.category); if (!b) { b = { category: it.category, items: [] }; byCat.push(b); } b.items.push(it); });
-  const parsedRows = bulkOpen ? parseBulkRows(bulkText) : [];
+  const parsedRows = bulkOpen ? [...parseBulkRows(bulkText), ...uploadedRows] : [];
+
+  const handleFileChange = async (e) => {
+    setFileError("");
+    setUploadedRows([]);
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const buffer = await file.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: "array" });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+      const parsed = parseExcelRows(rows);
+      if (parsed.length === 0) {
+        setFileError("No valid rows found in file. Use Category + Question columns.");
+        return;
+      }
+      setUploadedRows(parsed);
+    } catch (err) {
+      console.error(err);
+      setFileError("Unable to parse file. Use XLSX or CSV with Category and Question columns.");
+    }
+  };
 
   return (
     <div>
@@ -650,7 +706,10 @@ function TemplateEditor({ domainId, items, onAddItem, onBulkImport, onUpdateItem
         <input placeholder="Category" style={{ width: 160 }} value={draft.category} onChange={(e) => setDraft({ ...draft, category: e.target.value })} />
         <input placeholder="Checklist question…" style={{ flex: 1 }} value={draft.item} onChange={(e) => setDraft({ ...draft, item: e.target.value })} />
         <input type="number" min={1} max={5} style={{ width: 60 }} value={draft.weight} onChange={(e) => setDraft({ ...draft, weight: Number(e.target.value) })} />
-        <select style={{ width: 110 }} value={draft.type} onChange={(e) => setDraft({ ...draft, type: e.target.value })}><option>Mandatory</option><option>Optional</option></select>
+        <select style={{ width: 110 }} value={draft.type} onChange={(e) => setDraft({ ...draft, type: e.target.value })}>
+          <option>Mandatory</option>
+          <option>Optional</option>
+        </select>
         <button className="iconBtn" title="Add item" onClick={() => { if (draft.category.trim() && draft.item.trim()) { onAddItem(domainId, draft.category.trim(), draft.item.trim(), draft.weight, draft.type); setDraft({ category: draft.category, item: "", weight: 3, type: "Mandatory" }); } }}><Plus size={14} /></button>
       </div>
       <button className="ghostBtn" style={{ marginTop: 10 }} onClick={() => setBulkOpen((v) => !v)}><ClipboardPaste size={14} /> {bulkOpen ? "Hide bulk import" : "Bulk import from a question bank"}</button>
@@ -659,11 +718,19 @@ function TemplateEditor({ domainId, items, onAddItem, onBulkImport, onUpdateItem
           <p style={styles.subtle}>Paste rows copied from Excel/Sheets: <b>Category</b>, <b>Question</b>, <b>Weight (1-5, optional)</b>, <b>Mandatory/Optional (optional)</b>. Tab- or comma-separated, one question per line.</p>
           <textarea style={styles.bulkTextarea} value={bulkText} onChange={(e) => setBulkText(e.target.value)} rows={6}
             placeholder={"Connectivity & Protocols\tBluetooth pairing is tested across all supported devices.\t4\tMandatory"} />
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10 }}>
-            <button className="primaryBtn" disabled={parsedRows.length === 0} onClick={async () => { await onBulkImport(domainId, parsedRows); setBulkText(""); setBulkOpen(false); }}>
-              <Plus size={15} /> Import {parsedRows.length} item{parsedRows.length !== 1 ? "s" : ""}
-            </button>
-            {bulkText.trim() && parsedRows.length === 0 && <span style={{ color: "#e08480", fontSize: 12.5 }}>No valid rows detected.</span>}
+          <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 10 }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <input type="file" accept=".xlsx,.xls,.csv" onChange={handleFileChange} />
+              <span style={styles.subtle}>Upload XLSX / CSV</span>
+            </label>
+            {fileError && <div style={{ color: "#e08480", fontSize: 12.5 }}>{fileError}</div>}
+            {uploadedRows.length > 0 && <div style={{ color: "#b0d6a4", fontSize: 12.5 }}>{uploadedRows.length} rows ready from file upload.</div>}
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <button className="primaryBtn" disabled={parsedRows.length === 0} onClick={async () => { await onBulkImport(domainId, parsedRows); setBulkText(""); setUploadedRows([]); setBulkOpen(false); }}>
+                <Plus size={15} /> Import {parsedRows.length} item{parsedRows.length !== 1 ? "s" : ""}
+              </button>
+              {parsedRows.length === 0 && <span style={{ color: "#e08480", fontSize: 12.5 }}>No valid rows detected.</span>}
+            </div>
           </div>
         </div>
       )}
@@ -710,49 +777,128 @@ function HistoryView({ audits, onOpen, onDelete, onReport }) {
   );
 }
 
+// ===========================================================================
 function DashboardView({ audits, projects }) {
   const quarterCounts = groupCounts(audits, (a) => quarterLabel(a.date));
-  const projectCounts = groupCounts(audits, (a) => a.projectName || "Untitled");
-  const recentAudits = audits.slice(0, 10);
+  const projectStats = {};
+  audits.forEach((a) => {
+    const key = a.projectName || "Untitled";
+    if (!projectStats[key]) projectStats[key] = { count: 0, scoreSum: 0, scoreCount: 0 };
+    projectStats[key].count += 1;
+    if (a.score !== null && a.score !== undefined) {
+      projectStats[key].scoreSum += a.score;
+      projectStats[key].scoreCount += 1;
+    }
+  });
+  const projectRows = Object.entries(projectStats)
+    .map(([name, s]) => ({ name, count: s.count, avgScore: s.scoreCount ? s.scoreSum / s.scoreCount : null }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 8);
+
+  const quarterRows = Object.entries(quarterCounts).sort(([a], [b]) => a.localeCompare(b));
+  const maxQuarterCount = Math.max(1, ...quarterRows.map(([, c]) => c));
+  const maxProjectCount = Math.max(1, ...projectRows.map((r) => r.count));
+
+  const scoredAudits = audits.filter((a) => a.score !== null && a.score !== undefined);
+  const avgScore = scoredAudits.length ? scoredAudits.reduce((sum, a) => sum + a.score, 0) / scoredAudits.length : null;
+
+  const recentAudits = audits.slice(0, 8);
+
+  const stats = [
+    { icon: ClipboardList, label: "Total Audits", value: audits.length },
+    { icon: FolderKanban, label: "Projects Audited", value: Object.keys(projectStats).length },
+    { icon: Percent, label: "Average Score", value: pct(avgScore), color: scoreColor(avgScore) },
+    { icon: Calendar, label: "Quarters Tracked", value: quarterRows.length },
+  ];
 
   return (
     <div>
-      <h1 style={styles.h1}>Audit Dashboard</h1>
-      <p style={styles.subtle}>Track audits by quarter and project so you can see where your QA program is growing.</p>
-      <div style={styles.dashboardGrid}>
-        <div style={styles.dashboardCard}><div style={styles.dashboardCardLabel}>Total audits</div><div style={styles.dashboardCardValue}>{audits.length}</div></div>
-        <div style={styles.dashboardCard}><div style={styles.dashboardCardLabel}>Projects audited</div><div style={styles.dashboardCardValue}>{Object.keys(projectCounts).length}</div></div>
-        <div style={styles.dashboardCard}><div style={styles.dashboardCardLabel}>Audit quarters</div><div style={styles.dashboardCardValue}>{Object.keys(quarterCounts).length}</div></div>
+      <div style={styles.topRow}>
+        <div>
+          <h1 style={styles.h1}>Audit Dashboard</h1>
+          <p style={styles.subtle}>Track audits by quarter and project so you can see where your QA program is growing.</p>
+        </div>
       </div>
+
+      <div style={styles.statRow}>
+        {stats.map(({ icon: Icon, label, value, color }) => (
+          <div key={label} style={styles.statCard}>
+            <div style={styles.statCardIcon}><Icon size={16} color="#e8a33d" /></div>
+            <div style={{ ...styles.statCardValue, color: color || "#eef1f4" }}>{value}</div>
+            <div style={styles.statCardLabel}>{label}</div>
+          </div>
+        ))}
+      </div>
+
       <div style={styles.sectionSplit}>
         <div style={styles.dashboardSection}>
-          <div style={styles.sectionTitle}>Audits by quarter</div>
-          <div style={styles.dashboardList}>
-            {Object.entries(quarterCounts).sort().map(([quarter, count]) => (
-              <div key={quarter} style={styles.dashboardListItem}><span>{quarter}</span><strong>{count}</strong></div>
-            ))}
+          <div style={styles.sectionTitleRow}>
+            <TrendingUp size={15} color="#7c8794" />
+            <span style={styles.sectionTitle}>Audits by Quarter</span>
           </div>
+          {quarterRows.length === 0 ? (
+            <p style={styles.subtle}>No audits recorded yet.</p>
+          ) : (
+            <div style={styles.barList}>
+              {quarterRows.map(([quarter, count]) => (
+                <div key={quarter} style={styles.barRow}>
+                  <span style={styles.barLabel}>{quarter}</span>
+                  <div style={styles.barTrack}>
+                    <div style={{ ...styles.barFill, width: `${(count / maxQuarterCount) * 100}%` }} />
+                  </div>
+                  <span />
+                  <span style={styles.barValue}>{count}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
+
         <div style={styles.dashboardSection}>
-          <div style={styles.sectionTitle}>Top audited projects</div>
-          <div style={styles.dashboardList}>
-            {Object.entries(projectCounts).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([project, count]) => (
-              <div key={project} style={styles.dashboardListItem}><span>{project}</span><strong>{count}</strong></div>
-            ))}
+          <div style={styles.sectionTitleRow}>
+            <FolderKanban size={15} color="#7c8794" />
+            <span style={styles.sectionTitle}>Top Audited Projects</span>
           </div>
+          {projectRows.length === 0 ? (
+            <p style={styles.subtle}>No audits recorded yet.</p>
+          ) : (
+            <div style={styles.barList}>
+              {projectRows.map((row) => (
+                <div key={row.name} style={styles.barRow}>
+                  <span style={styles.barLabel} title={row.name}>{row.name}</span>
+                  <div style={styles.barTrack}>
+                    <div style={{ ...styles.barFill, width: `${(row.count / maxProjectCount) * 100}%` }} />
+                  </div>
+                  <span style={{ ...styles.barScoreBadge, color: scoreColor(row.avgScore) }}>{pct(row.avgScore)}</span>
+                  <span style={styles.barValue}>{row.count}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
+
       <div style={{ marginTop: 24 }}>
-        <div style={styles.sectionTitle}>Recent audits</div>
-        <div style={styles.table}>
-          <div style={styles.tableHeadRow}><span>Project</span><span>Quarter</span><span>Auditor</span><span>Date</span><span>Score</span></div>
-          {recentAudits.map((a) => (
-            <div key={a.id} style={styles.tableRow}>
-              <span style={styles.tableProject}>{a.projectName || "Untitled"}</span><span>{quarterLabel(a.date)}</span><span>{a.auditor}</span><span>{a.date}</span>
-              <span style={{ color: scoreColor(a.score), fontWeight: 600 }}>{pct(a.score)}</span>
-            </div>
-          ))}
+        <div style={styles.sectionTitleRow}>
+          <History size={15} color="#7c8794" />
+          <span style={styles.sectionTitle}>Recent Audits</span>
         </div>
+        {recentAudits.length === 0 ? (
+          <p style={styles.subtle}>No audits recorded yet.</p>
+        ) : (
+          <div style={styles.table}>
+            <div style={styles.tableHeadRow}><span>Project</span><span>Quarter</span><span>Auditor</span><span>Date</span><span>Score</span></div>
+            {recentAudits.map((a) => (
+              <div key={a.id} style={styles.tableRow}>
+                <span style={styles.tableProject}>{a.projectName || "Untitled"}</span>
+                <span>{quarterLabel(a.date)}</span>
+                <span>{a.auditor}</span>
+                <span>{a.date}</span>
+                <span style={{ color: scoreColor(a.score), fontWeight: 600, fontFamily: "'IBM Plex Mono', monospace" }}>{pct(a.score)}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -827,9 +973,25 @@ const styles = {
   main: { flex: 1, padding: "30px 40px 60px", maxWidth: 980, overflowY: "auto" },
   topRow: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 18 },
   topActions: { display: "flex", gap: 8 },
-  h1: { fontFamily: "'Space Grotesk', sans-serif", fontSize: 24, fontWeight: 600, margin: 0 },
-  h2: { fontFamily: "'Space Grotesk', sans-serif", fontSize: 17, fontWeight: 600, margin: "10px 0 4px" },
-  subtle: { color: "#8b96a3", fontSize: 13, margin: "4px 0 0" },
+  h1: { fontFamily: "'Space Grotesk', sans-serif", fontSize: 26, fontWeight: 700, margin: 0 },
+  h2: { fontFamily: "'Space Grotesk', sans-serif", fontSize: 18, fontWeight: 600, margin: "10px 0 4px" },
+  subtle: { color: "#9aa3b6", fontSize: 13, margin: "4px 0 0" },
+  statRow: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14, marginTop: 22, marginBottom: 26 },
+  statCard: { background: "#141b23", border: "1px solid #232d38", borderRadius: 14, padding: "18px 20px" },
+  statCardIcon: { width: 30, height: 30, borderRadius: 8, background: "rgba(232,163,61,0.12)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 12 },
+  statCardValue: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 26, fontWeight: 700, lineHeight: 1.1 },
+  statCardLabel: { fontSize: 12, color: "#8b96a3", marginTop: 6 },
+  sectionSplit: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16, marginTop: 8 },
+  dashboardSection: { background: "#12181f", border: "1px solid #1f2933", borderRadius: 14, padding: 20 },
+  sectionTitleRow: { display: "flex", alignItems: "center", gap: 8, marginBottom: 14 },
+  sectionTitle: { fontSize: 13.5, fontWeight: 600, color: "#dbe1e6" },
+  barList: { display: "flex", flexDirection: "column", gap: 12 },
+  barRow: { display: "grid", gridTemplateColumns: "88px 1fr auto 28px", alignItems: "center", gap: 10 },
+  barLabel: { fontSize: 12.5, color: "#c3cbd6", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
+  barTrack: { height: 8, borderRadius: 99, background: "#1c2530", overflow: "hidden" },
+  barFill: { height: "100%", background: "linear-gradient(90deg,#e8a33d,#c97a2e)", borderRadius: 99, transition: "width 0.3s ease" },
+  barValue: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: "#8b96a3", textAlign: "right" },
+  barScoreBadge: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 11.5, fontWeight: 600, minWidth: 42, textAlign: "right" },
   metaGrid: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14, marginTop: 4 },
   field: { display: "flex", flexDirection: "column", gap: 6 },
   fieldLabel: { fontSize: 11.5, color: "#7c8794", textTransform: "uppercase", letterSpacing: 0.4 },
@@ -859,8 +1021,9 @@ const styles = {
   toast: { position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)", background: "#1c242e", border: "1px solid #2c3742", color: "#eef1f4", padding: "10px 18px", borderRadius: 10, fontSize: 13 },
   emptyState: { textAlign: "center", padding: "60px 20px", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 },
   table: { marginTop: 18, border: "1px solid #1f2933", borderRadius: 12, overflow: "hidden" },
-  tableHeadRow: { display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 0.9fr 0.7fr 0.9fr", padding: "10px 16px", background: "#171f28", fontSize: 11, textTransform: "uppercase", letterSpacing: 0.4, color: "#7c8794" },
-  tableRow: { display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 0.9fr 0.7fr 0.9fr", padding: "12px 16px", borderTop: "1px solid #1a222c", fontSize: 13, alignItems: "center" },
+  tableHeadRow: { display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 0.9fr 0.7fr 0.9fr", padding: "12px 16px", background: "#10161f", fontSize: 11, textTransform: "uppercase", letterSpacing: 0.4, color: "#7c8794" },
+  tableRow: { display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 0.9fr 0.7fr 0.9fr", padding: "14px 16px", borderTop: "1px solid #1c2430", fontSize: 13, alignItems: "center", background: "#121a24", transition: "background 0.2s ease" },
+  dashboardRow: { cursor: "pointer" },
   tableProject: { fontWeight: 600 },
   rowActions: { display: "flex", gap: 6, justifyContent: "flex-end" },
   cardGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 14, marginTop: 20 },

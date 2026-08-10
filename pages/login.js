@@ -11,7 +11,14 @@ export default function Login() {
 
   useEffect(() => {
     fetch("/api/auth/status")
-      .then((r) => r.json())
+      .then(async (r) => {
+        if (!r.ok) return { configured: true };
+        const contentType = r.headers.get("content-type") || "";
+        if (contentType.includes("application/json")) {
+          return r.json();
+        }
+        return { configured: true };
+      })
       .then((d) => setMode(d.configured ? "login" : "setup"))
       .catch(() => setMode("login"));
   }, []);
@@ -32,8 +39,14 @@ export default function Login() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password }),
       });
-      const body = await res.json();
-      if (!res.ok) throw new Error(body.error || "Something went wrong.");
+      const contentType = res.headers.get("content-type") || "";
+      let body = {};
+      if (contentType.includes("application/json")) {
+        body = await res.json().catch(() => ({}));
+      } else {
+        body = { error: await res.text().catch(() => "Unexpected response") };
+      }
+      if (!res.ok) throw new Error(body.error || `Request failed with status ${res.status}`);
       router.push("/");
     } catch (e) {
       setError(e.message);
