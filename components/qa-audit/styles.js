@@ -38,6 +38,7 @@ export const styles = {
   barValue: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: "#8b96a3", textAlign: "right" },
   barScoreBadge: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 11.5, fontWeight: 600, minWidth: 42, textAlign: "right" },
   metaGrid: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14, marginTop: 4 },
+  metaGridAudit: { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginTop: 4 },
   field: { display: "flex", flexDirection: "column", gap: 6 },
   fieldLabel: { fontSize: 11.5, color: "#7c8794", textTransform: "uppercase", letterSpacing: 0.4 },
   segmented: { display: "flex", gap: 6, flexWrap: "wrap" },

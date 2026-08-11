@@ -11,7 +11,9 @@ export default function AuditFormView({
   onSave, showToast,
 }) {
   const existing = audits.find((a) => a.id === activeAuditId) || null;
+  const existingProject = existing ? projects.find((p) => p.id === existing.projectId) : null;
 
+  const [clientName, setClientName] = useState(existingProject?.client || existing?.client || "");
   const [projectId, setProjectId] = useState(existing?.projectId || "");
   const [auditee, setAuditee] = useState(existing?.auditee || "");
   const [auditor, setAuditor] = useState(existing?.auditor || "");
@@ -26,6 +28,8 @@ export default function AuditFormView({
   // itself, since that object is a fresh reference on every re-render.
   useEffect(() => {
     if (existing) {
+      const p = projects.find((pr) => pr.id === existing.projectId);
+      setClientName(p?.client || existing.client || "");
       setProjectId(existing.projectId || "");
       setAuditee(existing.auditee || "");
       setAuditor(existing.auditor || "");
@@ -34,7 +38,16 @@ export default function AuditFormView({
     }
   }, [activeAuditId]); // eslint-disable-line
 
+  // Clients list drives the first dropdown; the project dropdown only shows
+  // projects belonging to whichever client is currently selected.
+  const clients = useMemo(
+    () => Array.from(new Set(projects.map((p) => p.client).filter(Boolean))).sort(),
+    [projects]
+  );
+  const clientProjects = clientName ? projects.filter((p) => p.client === clientName) : [];
+
   const project = projects.find((p) => p.id === projectId);
+  const missingClient = saveAttempted && !clientName;
   const missingProject = saveAttempted && !project;
   const missingAuditee = saveAttempted && !auditee.trim();
   const missingAuditor = saveAttempted && !auditor.trim();
@@ -110,6 +123,7 @@ export default function AuditFormView({
 
   const startNew = () => {
     setActiveAuditId(null);
+    setClientName("");
     setProjectId("");
     setAuditee("");
     setAuditor("");
@@ -151,16 +165,27 @@ export default function AuditFormView({
         </div>
       </div>
 
-      <div style={styles.metaGrid}>
+      <div style={styles.metaGridAudit}>
+        <Field label="Client" error={missingClient}>
+          <select
+            value={clientName}
+            onChange={(e) => { setClientName(e.target.value); setProjectId(""); }}
+            style={missingClient ? { borderColor: "#e08480" } : {}}
+          >
+            <option value="">Select a client…</option>
+            {clients.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </Field>
         <Field label="Project" error={missingProject}>
           <select
             value={projectId}
             onChange={(e) => setProjectId(e.target.value)}
+            disabled={!clientName}
             style={missingProject ? { borderColor: "#e08480" } : {}}
           >
-            <option value="">Select a project…</option>
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>{p.name} ({p.client})</option>
+            <option value="">{clientName ? "Select a project…" : "Select a client first…"}</option>
+            {clientProjects.map((p) => (
+              <option key={p.id} value={p.id}>{p.name}</option>
             ))}
           </select>
         </Field>
