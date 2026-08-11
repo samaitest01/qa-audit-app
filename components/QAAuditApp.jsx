@@ -154,7 +154,7 @@ export default function QAAuditApp() {
 
   if (!ready) {
     return (
-      <div style={{ ...styles.app, alignItems: "center", justifyContent: "center", display: "flex" }}>
+      <div className="app" style={{ ...styles.app, alignItems: "center", justifyContent: "center", display: "flex" }}>
         <style>{css}</style>
         <div style={{ textAlign: "center" }}>
           <div className="spinner" />
@@ -166,7 +166,7 @@ export default function QAAuditApp() {
 
   if (loadError) {
     return (
-      <div style={{ ...styles.app, alignItems: "center", justifyContent: "center", display: "flex" }}>
+      <div className="app" style={{ ...styles.app, alignItems: "center", justifyContent: "center", display: "flex" }}>
         <style>{css}</style>
         <div style={{ textAlign: "center", maxWidth: 420 }}>
           <h2 style={styles.h2}>Couldn't load data</h2>
@@ -179,9 +179,9 @@ export default function QAAuditApp() {
   }
 
   return (
-    <div style={styles.app}>
+    <div className="app" style={styles.app}>
       <style>{css}</style>
-      <aside style={styles.sidebar}>
+      <aside className="sidebar" style={styles.sidebar}>
         <div style={styles.brand}>
           <div style={styles.brandMark}>QA</div>
           <div>
@@ -225,7 +225,7 @@ export default function QAAuditApp() {
         </button>
       </aside>
 
-      <main style={styles.main}>
+      <main className="main" style={styles.main}>
         {view === "form" && (
           <AuditFormView
             domains={domains} items={items} projects={projects} audits={audits}

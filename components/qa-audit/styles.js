@@ -37,8 +37,8 @@ export const styles = {
   barFill: { height: "100%", background: "linear-gradient(90deg,#e8a33d,#c97a2e)", borderRadius: 99, transition: "width 0.3s ease" },
   barValue: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: "#8b96a3", textAlign: "right" },
   barScoreBadge: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 11.5, fontWeight: 600, minWidth: 42, textAlign: "right" },
-  metaGrid: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14, marginTop: 4 },
-  metaGridAudit: { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginTop: 4 },
+  metaGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14, marginTop: 4 },
+  metaGridAudit: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14, marginTop: 4 },
   field: { display: "flex", flexDirection: "column", gap: 6 },
   fieldLabel: { fontSize: 11.5, color: "#7c8794", textTransform: "uppercase", letterSpacing: 0.4 },
   segmented: { display: "flex", gap: 6, flexWrap: "wrap" },
@@ -66,9 +66,9 @@ export const styles = {
   validationHint: { marginTop: 6, color: "#e08480", fontSize: 11, lineHeight: 1.3 },
   toast: { position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)", background: "#1c242e", border: "1px solid #2c3742", color: "#eef1f4", padding: "10px 18px", borderRadius: 10, fontSize: 13 },
   emptyState: { textAlign: "center", padding: "60px 20px", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 },
-  table: { marginTop: 18, border: "1px solid #1f2933", borderRadius: 12, overflow: "hidden" },
-  tableHeadRow: { display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 0.9fr 0.7fr 0.9fr", padding: "12px 16px", background: "#10161f", fontSize: 11, textTransform: "uppercase", letterSpacing: 0.4, color: "#7c8794" },
-  tableRow: { display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 0.9fr 0.7fr 0.9fr", padding: "14px 16px", borderTop: "1px solid #1c2430", fontSize: 13, alignItems: "center", background: "#121a24", transition: "background 0.2s ease" },
+  table: { marginTop: 18, border: "1px solid #1f2933", borderRadius: 12, overflowX: "auto", overflowY: "hidden" },
+  tableHeadRow: { display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 0.9fr 0.7fr 0.9fr", padding: "12px 16px", background: "#10161f", fontSize: 11, textTransform: "uppercase", letterSpacing: 0.4, color: "#7c8794", minWidth: 640 },
+  tableRow: { display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 0.9fr 0.7fr 0.9fr", padding: "14px 16px", borderTop: "1px solid #1c2430", fontSize: 13, alignItems: "center", background: "#121a24", transition: "background 0.2s ease", minWidth: 640 },
   dashboardRow: { cursor: "pointer" },
   tableProject: { fontWeight: 600 },
   rowActions: { display: "flex", gap: 6, justifyContent: "flex-end" },
@@ -83,13 +83,13 @@ export const styles = {
   templateCatLabel: { fontSize: 11.5, color: "#7c8794", textTransform: "uppercase", letterSpacing: 0.4, margin: "10px 0 6px" },
   templateRow: { display: "flex", alignItems: "center", gap: 10, padding: "7px 0", borderBottom: "1px solid #171f28" },
   templateItemText: { flex: 1, fontSize: 13 },
-  addItemRow: { display: "flex", gap: 8, marginTop: 14, alignItems: "center" },
+  addItemRow: { display: "flex", gap: 8, marginTop: 14, alignItems: "center", flexWrap: "wrap" },
   bulkPanel: { border: "1px solid #2a3440", background: "#141b23", borderRadius: 10, padding: 14, marginTop: 10 },
   bulkTextarea: { width: "100%", background: "#0e1319", border: "1px solid #232d38", borderRadius: 8, padding: 10, color: "#eef1f4", fontSize: 12.5, fontFamily: "'IBM Plex Mono', monospace", outline: "none", resize: "vertical", boxSizing: "border-box" },
   reportSheet: { background: "#fdfcfa", color: "#1a1a1a", borderRadius: 12, padding: "36px 40px", marginTop: 18 },
   reportHeader: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid #1a1a1a", paddingBottom: 14 },
   reportTitle: { fontFamily: "'Space Grotesk', sans-serif", fontSize: 21, fontWeight: 700 },
-  reportMetaGrid: { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, fontSize: 12.5, marginTop: 14, color: "#333" },
+  reportMetaGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10, fontSize: 12.5, marginTop: 14, color: "#333" },
   reportCatHeader: { display: "flex", justifyContent: "space-between", fontWeight: 700, fontSize: 13, borderBottom: "1px solid #ccc", paddingBottom: 4, marginBottom: 6, fontFamily: "'IBM Plex Mono', monospace" },
   reportRow: { display: "flex", alignItems: "center", gap: 8, padding: "4px 0", fontSize: 12.5 },
   reportStatusDot: { width: 7, height: 7, borderRadius: 99, flexShrink: 0 },
@@ -125,4 +125,16 @@ input[type=checkbox] { width:auto !important; }
 @media print { .noPrint { display:none !important; } body { background:white; } }
 .spinner { width:28px; height:28px; border:3px solid #232d38; border-top-color:#e8a33d; border-radius:50%; margin:0 auto; animation:spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* Below this width the fixed 240px sidebar leaves too little room for
+   content, so the layout switches from a side-by-side split (each pane
+   scrolling independently) to a normal stacked page (nav on top, page
+   itself scrolls). Inline styles win over plain CSS, so these need
+   !important to actually override style={styles.app / .sidebar / .main}. */
+@media (max-width: 720px) {
+  .app { flex-direction: column !important; height: auto !important; min-height: 100vh !important; width: 100% !important; overflow: visible !important; }
+  .sidebar { width: 100% !important; height: auto !important; position: relative !important; top: auto !important; overflow: visible !important; flex-direction: row !important; flex-wrap: wrap !important; align-items: center !important; padding: 14px 16px !important; gap: 10px 16px !important; border-right: none !important; border-bottom: 1px solid #1f2933; }
+  .sidebar nav { flex-direction: row !important; flex-wrap: wrap !important; gap: 6px !important; }
+  .main { height: auto !important; max-width: 100% !important; padding: 20px 16px 48px !important; }
+}
 `;
