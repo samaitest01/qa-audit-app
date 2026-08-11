@@ -5,6 +5,9 @@ export default async function handler(req, res) {
 
   if (req.method === "PUT") {
     const b = req.body || {};
+
+    // snake_case columns in the DB, camelCase on the frontend — mapped by
+    // hand both ways (see the JSON response built below too).
     const row = {
       project_id: b.projectId, project_name: b.projectName, client: b.client,
       domain_ids: b.domainIds || [], auditee: b.auditee, auditor: b.auditor,

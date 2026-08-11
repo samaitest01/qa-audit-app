@@ -5,6 +5,10 @@ export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   const b = req.body || {};
+
+  // The audits table uses snake_case columns; the frontend sends/expects
+  // camelCase, so requests and responses are mapped by hand on the way in
+  // and out (mirrored below when building the JSON response).
   const row = {
     id: uid(),
     project_id: b.projectId, project_name: b.projectName, client: b.client,

@@ -12,6 +12,8 @@ export default async function handler(req, res) {
       .select()
       .single();
     if (error) return res.status(500).json({ error: error.message });
+
+    // DB column is domain_ids (snake_case); the frontend works in camelCase.
     return res.status(200).json({ id: data.id, name: data.name, client: data.client, domainIds: data.domain_ids || [] });
   }
 
