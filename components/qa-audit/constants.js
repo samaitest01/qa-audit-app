@@ -1,8 +1,8 @@
 export const STATUSES = ["Yes", "Partial", "No", "N/A"];
 
 export const STATUS_COLOR = {
-  Yes: "#4c9a6a",
-  Partial: "#d1a13f",
-  No: "#c25450",
+  Yes: "#6fb98f",
+  Partial: "#e0b568",
+  No: "#d0726d",
   "N/A": "#5b6572",
 };

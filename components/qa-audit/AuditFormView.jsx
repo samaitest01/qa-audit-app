@@ -342,7 +342,7 @@ function ChecklistRow({ q, value, onChange, saveAttempted }) {
         </div>
         <div style={{ flex: 1 }}>
           <input
-            style={{ ...styles.commentInput, borderColor: missingComment ? "#e08480" : styles.commentInput.border }}
+            style={{ ...styles.commentInput, borderColor: missingComment ? "#e08480" : "#232d38" }}
             placeholder="Comment (required)"
             value={comment}
             onChange={(e) => onChange({ comment: e.target.value })}
