@@ -87,7 +87,15 @@ export const styles = {
   addItemRow: { display: "flex", gap: 8, marginTop: 14, alignItems: "center", flexWrap: "wrap" },
   bulkPanel: { border: "1px solid #2a3440", background: "#141b23", borderRadius: 10, padding: 14, marginTop: 10 },
   bulkTextarea: { width: "100%", background: "#0e1319", border: "1px solid #232d38", borderRadius: 8, padding: 10, color: "#eef1f4", fontSize: 12.5, fontFamily: "'IBM Plex Mono', monospace", outline: "none", resize: "vertical", boxSizing: "border-box" },
+  reportWarning: { display: "flex", alignItems: "center", gap: 8, background: "rgba(224,132,128,0.12)", border: "1px solid #5a3230", color: "#e08480", borderRadius: 10, padding: "10px 14px", fontSize: 13, marginBottom: 4 },
   reportSheet: { background: "#fdfcfa", color: "#1a1a1a", borderRadius: 12, padding: "36px 40px", marginTop: 18 },
+  reportPieWrap: { display: "flex", alignItems: "flex-start", gap: 30, marginTop: 10 },
+  reportPieLegend: { display: "flex", flexDirection: "column" },
+  reportPieDomainLabel: { fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4, color: "#8a8272", margin: "6px 0 4px" },
+  reportPieLegendItem: { display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, minWidth: 220 },
+  reportPieSwatch: { width: 10, height: 10, borderRadius: 3, flexShrink: 0 },
+  reportPieLabel: { color: "#333" },
+  reportPieValue: { fontFamily: "'IBM Plex Mono', monospace", fontWeight: 700, marginLeft: "auto", paddingLeft: 16 },
   reportHeader: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid #1a1a1a", paddingBottom: 14 },
   reportTitle: { fontFamily: "'Space Grotesk', sans-serif", fontSize: 21, fontWeight: 700 },
   reportMetaGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10, fontSize: 12.5, marginTop: 14, color: "#333" },
@@ -123,7 +131,11 @@ input, select, textarea { background:#171f28; border:1px solid #232d38; border-r
 input:focus, select:focus, textarea:focus { border-color:#e8a33d; }
 input[type=date] { color-scheme: dark; }
 input[type=checkbox] { width:auto !important; }
-@media print { .noPrint { display:none !important; } body { background:white; } }
+@media print {
+  .noPrint, .sidebar { display:none !important; }
+  body { background:white; }
+  .app, .main { height:auto !important; overflow:visible !important; background:white !important; color:#1a1a1a !important; }
+}
 .spinner { width:28px; height:28px; border:3px solid #232d38; border-top-color:#e8a33d; border-radius:50%; margin:0 auto; animation:spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
