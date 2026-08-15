@@ -127,7 +127,7 @@ export default function QAAuditApp() {
   };
 
   // ---- audit mutations ----
-  const saveAudit = async (record) => {
+  const saveAudit = async (record, message = "Audit saved.") => {
     try {
       let saved;
       if (record.id) {
@@ -138,7 +138,7 @@ export default function QAAuditApp() {
         setAudits((prev) => [saved, ...prev]);
       }
       setActiveAuditId(saved.id);
-      showToast("Audit saved.");
+      showToast(message);
       return saved;
     } catch (e) {
       showToast(e.message);

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, FolderKanban, Save, Search, X } from "lucide-react";
+import { Bookmark, ChevronDown, FolderKanban, Save, Search, X } from "lucide-react";
 import { pct, scoreColor, scoreFor } from "../../lib/scoring";
 import { STATUSES, STATUS_COLOR } from "./constants";
 import Field from "./Field";
@@ -121,6 +121,38 @@ export default function AuditFormView({
     }
   };
 
+  // A draft only needs a project — auditee/auditor and checklist answers
+  // can stay incomplete. Unlike handleSave, this never flips saveAttempted
+  // (that would light up every unanswered item's red border) and it stays
+  // on the same audit afterward instead of resetting the form.
+  const handleSaveDraft = async () => {
+    if (!project) {
+      showToast("Pick a project first.");
+      return;
+    }
+    try {
+      await onSave(
+        {
+          id: activeAuditId,
+          projectId: project.id,
+          projectName: project.name,
+          client: project.client,
+          domainIds,
+          auditee,
+          auditor,
+          date,
+          answers,
+          score: overallScore,
+          answeredCount,
+          totalCount: allItems.length,
+        },
+        "Draft saved — pick it up anytime from Audit History."
+      );
+    } catch (e) {
+      showToast(e.message || "Unable to save draft.");
+    }
+  };
+
   const startNew = () => {
     setActiveAuditId(null);
     setClientName("");
@@ -159,6 +191,9 @@ export default function AuditFormView({
               <X size={14} /> Start new
             </button>
           )}
+          <button className="ghostBtn" onClick={handleSaveDraft}>
+            <Bookmark size={14} /> Save draft
+          </button>
           <button className="primaryBtn" onClick={handleSave}>
             <Save size={15} /> Save audit
           </button>
