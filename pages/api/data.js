@@ -41,7 +41,7 @@ export default async function handler(req, res) {
   res.status(200).json({
     domains: domains.data,
     items: items.data.map((it) => ({
-      id: it.id, domainId: it.domain_id, category: it.category,
+      id: it.id, domainId: it.domain_id, section: it.section, category: it.category,
       item: it.question, weight: it.weight, type: it.type,
     })),
     projects: projects.data.map((p) => ({

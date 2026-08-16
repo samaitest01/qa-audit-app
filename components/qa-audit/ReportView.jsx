@@ -119,33 +119,53 @@ export default function ReportView({ audit, items, domains, onBack }) {
             </div>
           );
         })()}
-        {groups.map(({ domain, categories }) => (
-          <div key={domain.id} style={{ marginTop: 20 }}>
-            <div style={{ ...styles.reportCatHeader, fontSize: 14, borderBottom: "2px solid #1a1a1a" }}>{domain.name}</div>
-            {categories.map((cat) => {
-              const catScore = scoreFor(cat.items, audit.answers);
-              return (
-                <div key={cat.category} style={{ marginTop: 10 }}>
-                  <div style={styles.reportCatHeader}>
-                    <span>{cat.category}</span>
-                    <span>{pct(catScore)}</span>
-                  </div>
-                  {cat.items.map((q) => {
-                    const a = audit.answers[q.id];
+        {groups.map(({ domain, categories }) => {
+          // Categories are re-grouped by section (Manual/Automation/Shared)
+          // just for display here — a category's section is whatever its
+          // items were tagged with (all items in a category share one).
+          const bySection = [];
+          categories.forEach((cat) => {
+            const section = cat.items[0]?.section || "Manual";
+            let bucket = bySection.find((s) => s.section === section);
+            if (!bucket) {
+              bucket = { section, categories: [] };
+              bySection.push(bucket);
+            }
+            bucket.categories.push(cat);
+          });
+          return (
+            <div key={domain.id} style={{ marginTop: 20 }}>
+              <div style={{ ...styles.reportCatHeader, fontSize: 14, borderBottom: "2px solid #1a1a1a" }}>{domain.name}</div>
+              {bySection.map((sec) => (
+                <div key={sec.section} style={{ marginTop: 12 }}>
+                  <div style={styles.reportSectionLabel}>{sec.section}</div>
+                  {sec.categories.map((cat) => {
+                    const catScore = scoreFor(cat.items, audit.answers);
                     return (
-                      <div key={q.id} style={styles.reportRow}>
-                        <span style={{ ...styles.reportStatusDot, background: a?.status ? STATUS_COLOR[a.status] : "#3a4552" }} />
-                        <span style={styles.reportItemText}>{q.item}</span>
-                        <span style={styles.reportStatusText}>{a?.status || "—"}</span>
-                        {a?.comment && <span style={styles.reportComment}>{a.comment}</span>}
+                      <div key={cat.category} style={{ marginTop: 10 }}>
+                        <div style={styles.reportCatHeader}>
+                          <span>{cat.category}</span>
+                          <span>{pct(catScore)}</span>
+                        </div>
+                        {cat.items.map((q) => {
+                          const a = audit.answers[q.id];
+                          return (
+                            <div key={q.id} style={styles.reportRow}>
+                              <span style={{ ...styles.reportStatusDot, background: a?.status ? STATUS_COLOR[a.status] : "#3a4552" }} />
+                              <span style={styles.reportItemText}>{q.item}</span>
+                              <span style={styles.reportStatusText}>{a?.status || "—"}</span>
+                              {a?.comment && <span style={styles.reportComment}>{a.comment}</span>}
+                            </div>
+                          );
+                        })}
                       </div>
                     );
                   })}
                 </div>
-              );
-            })}
-          </div>
-        ))}
+              ))}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

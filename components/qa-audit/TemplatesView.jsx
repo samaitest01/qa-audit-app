@@ -111,20 +111,28 @@ export default function TemplatesView({ domains, items, onAddDomain, onDeleteDom
 }
 
 function TemplateEditor({ domainId, items, onAddItem, onBulkImport, onUpdateItem, onDeleteItem }) {
-  const [draft, setDraft] = useState({ category: "", item: "", weight: 3, type: "Mandatory" });
+  const [draft, setDraft] = useState({ section: "Manual", category: "", item: "", weight: 3, type: "Mandatory" });
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkText, setBulkText] = useState("");
   const [fileError, setFileError] = useState("");
   const [uploadedRows, setUploadedRows] = useState([]);
 
-  const byCat = [];
+  // Section -> Category -> items, in first-seen order (mirrors the
+  // restructured question bank's Section/Category/Question hierarchy).
+  const bySection = [];
   items.forEach((it) => {
-    let bucket = byCat.find((x) => x.category === it.category);
-    if (!bucket) {
-      bucket = { category: it.category, items: [] };
-      byCat.push(bucket);
+    const section = it.section || "Manual";
+    let sectionBucket = bySection.find((x) => x.section === section);
+    if (!sectionBucket) {
+      sectionBucket = { section, categories: [] };
+      bySection.push(sectionBucket);
     }
-    bucket.items.push(it);
+    let catBucket = sectionBucket.categories.find((x) => x.category === it.category);
+    if (!catBucket) {
+      catBucket = { category: it.category, items: [] };
+      sectionBucket.categories.push(catBucket);
+    }
+    catBucket.items.push(it);
   });
 
   // Rows can come from the paste textarea and/or an uploaded file at the
@@ -155,14 +163,25 @@ function TemplateEditor({ domainId, items, onAddItem, onBulkImport, onUpdateItem
 
   return (
     <div>
-      {byCat.map((c) => (
-        <div key={c.category} style={{ marginTop: 12 }}>
-          <div style={styles.templateCatLabel}>{c.category}</div>
-          {c.items.map((it) => <TemplateRow key={it.id} item={it} onUpdate={onUpdateItem} onDelete={onDeleteItem} />)}
+      {bySection.map((s) => (
+        <div key={s.section} style={{ marginTop: 16 }}>
+          <div style={styles.templateSectionLabel}>{s.section}</div>
+          {s.categories.map((c) => (
+            <div key={c.category} style={{ marginTop: 10 }}>
+              <div style={styles.templateCatLabel}>{c.category}</div>
+              {c.items.map((it) => <TemplateRow key={it.id} item={it} onUpdate={onUpdateItem} onDelete={onDeleteItem} />)}
+            </div>
+          ))}
         </div>
       ))}
 
       <div style={styles.addItemRow}>
+        <input
+          placeholder="Section"
+          style={{ width: 100 }}
+          value={draft.section}
+          onChange={(e) => setDraft({ ...draft, section: e.target.value })}
+        />
         <input
           placeholder="Category"
           style={{ width: 160 }}
@@ -192,8 +211,8 @@ function TemplateEditor({ domainId, items, onAddItem, onBulkImport, onUpdateItem
           title="Add item"
           onClick={() => {
             if (draft.category.trim() && draft.item.trim()) {
-              onAddItem(domainId, draft.category.trim(), draft.item.trim(), draft.weight, draft.type);
-              setDraft({ category: draft.category, item: "", weight: 3, type: "Mandatory" });
+              onAddItem(domainId, draft.section.trim() || "Manual", draft.category.trim(), draft.item.trim(), draft.weight, draft.type);
+              setDraft({ section: draft.section, category: draft.category, item: "", weight: 3, type: "Mandatory" });
             }
           }}
         >
@@ -208,19 +227,19 @@ function TemplateEditor({ domainId, items, onAddItem, onBulkImport, onUpdateItem
       {bulkOpen && (
         <div style={styles.bulkPanel}>
           <p style={styles.subtle}>
-            Paste rows copied from Excel/Sheets: <b>Category</b>, <b>Question</b>, <b>Weight (1-5, optional)</b>, <b>Mandatory/Optional (optional)</b>. Tab- or comma-separated, one question per line.
+            Paste rows copied from Excel/Sheets: <b>Category</b>, <b>Question</b>, <b>Weight (1-5, optional)</b>, <b>Mandatory/Optional (optional)</b> — or 5 columns with <b>Section</b> first. Tab- or comma-separated, one question per line.
           </p>
           <textarea
             style={styles.bulkTextarea}
             value={bulkText}
             onChange={(e) => setBulkText(e.target.value)}
             rows={6}
-            placeholder={"Connectivity & Protocols\tBluetooth pairing is tested across all supported devices.\t4\tMandatory"}
+            placeholder={"Manual\tConnectivity & Protocols\tBluetooth pairing is tested across all supported devices.\t4\tMandatory"}
           />
           <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 10 }}>
             <label style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <input type="file" accept=".xlsx,.xls,.csv" onChange={handleFileChange} />
-              <span style={styles.subtle}>Upload XLSX / CSV</span>
+              <span style={styles.subtle}>Upload XLSX / CSV — a header row with a "Section" column is picked up automatically.</span>
             </label>
             {fileError && <div style={{ color: "#e08480", fontSize: 12.5 }}>{fileError}</div>}
             {uploadedRows.length > 0 && <div style={{ color: "#b0d6a4", fontSize: 12.5 }}>{uploadedRows.length} rows ready from file upload.</div>}

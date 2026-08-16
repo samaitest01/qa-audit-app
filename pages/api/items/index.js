@@ -4,15 +4,16 @@ import { uid } from "../../../lib/scoring";
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-  const { domainId, category, item, weight, type, bulk } = req.body || {};
+  const { domainId, section, category, item, weight, type, bulk } = req.body || {};
 
-  // Bulk import: { domainId, bulk: [{ category, item, weight, type }, ...] }
+  // Bulk import: { domainId, bulk: [{ section, category, item, weight, type }, ...] }
   if (Array.isArray(bulk)) {
     const rows = bulk
       .filter((r) => r.category && r.item)
       .map((r) => ({
         id: uid(),
         domain_id: domainId,
+        section: (r.section && String(r.section).trim()) || "Manual",
         category: String(r.category).trim(),
         question: String(r.item).trim(),
         weight: Number(r.weight) >= 1 && Number(r.weight) <= 5 ? Number(r.weight) : 3,
@@ -29,7 +30,8 @@ export default async function handler(req, res) {
   const { data, error } = await supabaseAdmin
     .from("checklist_items")
     .insert({
-      id: uid(), domain_id: domainId, category: category.trim(), question: item.trim(),
+      id: uid(), domain_id: domainId, section: (section && section.trim()) || "Manual",
+      category: category.trim(), question: item.trim(),
       weight: weight || 3, type: type || "Mandatory",
     })
     .select()

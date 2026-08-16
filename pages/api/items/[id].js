@@ -4,10 +4,10 @@ export default async function handler(req, res) {
   const { id } = req.query;
 
   if (req.method === "PUT") {
-    const { category, item, weight, type } = req.body || {};
+    const { section, category, item, weight, type } = req.body || {};
     const { data, error } = await supabaseAdmin
       .from("checklist_items")
-      .update({ category, question: item, weight, type })
+      .update({ section, category, question: item, weight, type })
       .eq("id", id)
       .select()
       .single();

@@ -53,29 +53,39 @@ export default function AuditFormView({
   const missingAuditor = saveAttempted && !auditor.trim();
   const domainIds = project ? Array.from(new Set(["core", ...(project.domainIds || [])])) : [];
 
-  // Checklist items are grouped by domain, then by category, so the form
-  // can render collapsible domain -> category -> item sections.
+  // Checklist items are grouped by domain, then by section (Manual/Automation/
+  // Shared), then by category, so the form can render collapsible
+  // domain -> section -> category -> item sections.
   const sections = useMemo(() => {
     const groups = [];
     domainIds.forEach((did) => {
       const domain = domains.find((d) => d.id === did);
       if (!domain) return;
       const domainItems = items.filter((it) => it.domainId === did);
-      const byCat = [];
+      const bySection = [];
       domainItems.forEach((it) => {
-        let bucket = byCat.find((x) => x.category === it.category);
-        if (!bucket) {
-          bucket = { category: it.category, items: [] };
-          byCat.push(bucket);
+        const section = it.section || "Manual";
+        let sectionBucket = bySection.find((x) => x.section === section);
+        if (!sectionBucket) {
+          sectionBucket = { section, categories: [] };
+          bySection.push(sectionBucket);
         }
-        bucket.items.push(it);
+        let catBucket = sectionBucket.categories.find((x) => x.category === it.category);
+        if (!catBucket) {
+          catBucket = { category: it.category, items: [] };
+          sectionBucket.categories.push(catBucket);
+        }
+        catBucket.items.push(it);
       });
-      groups.push({ domain, categories: byCat });
+      groups.push({ domain, bySection });
     });
     return groups;
   }, [domainIds, domains, items]);
 
-  const allItems = useMemo(() => sections.flatMap((s) => s.categories.flatMap((c) => c.items)), [sections]);
+  const allItems = useMemo(
+    () => sections.flatMap((s) => s.bySection.flatMap((sec) => sec.categories.flatMap((c) => c.items))),
+    [sections]
+  );
   const overallScore = useMemo(() => scoreFor(allItems, answers), [allItems, answers]);
   const answeredCount = allItems.filter((q) => answers[q.id]?.status).length;
 
@@ -292,15 +302,20 @@ export default function AuditFormView({
             />
           </div>
 
-          {sections.map(({ domain, categories }) => {
-            const domainItemsFlat = categories.flatMap((c) => c.items);
+          {sections.map(({ domain, bySection }) => {
+            const domainItemsFlat = bySection.flatMap((s) => s.categories.flatMap((c) => c.items));
             const domainScore = scoreFor(domainItemsFlat, answers);
-            const filteredCats = query.trim()
-              ? categories
-                  .map((c) => ({ ...c, items: c.items.filter((it) => it.item.toLowerCase().includes(query.toLowerCase())) }))
-                  .filter((c) => c.items.length)
-              : categories;
-            if (query.trim() && filteredCats.length === 0) return null;
+            const filteredBySection = query.trim()
+              ? bySection
+                  .map((s) => ({
+                    ...s,
+                    categories: s.categories
+                      .map((c) => ({ ...c, items: c.items.filter((it) => it.item.toLowerCase().includes(query.toLowerCase())) }))
+                      .filter((c) => c.items.length),
+                  }))
+                  .filter((s) => s.categories.length)
+              : bySection;
+            if (query.trim() && filteredBySection.length === 0) return null;
 
             return (
               <div key={domain.id} style={{ marginTop: 26 }}>
@@ -308,34 +323,39 @@ export default function AuditFormView({
                   <span>{domain.name}</span>
                   <span style={{ color: scoreColor(domainScore), fontFamily: "'IBM Plex Mono', monospace" }}>{pct(domainScore)}</span>
                 </div>
-                {filteredCats.map((cat) => {
-                  const catScore = scoreFor(cat.items, answers);
-                  const key = `${domain.id}::${cat.category}`;
-                  const isOpen = openCategory === key || query.trim().length > 0;
-                  return (
-                    <div key={key} style={styles.categoryCard}>
-                      <button className="categoryHeader" onClick={() => setOpenCategory(isOpen && !query ? null : key)}>
-                        <ChevronDown size={16} style={{ transform: isOpen ? "rotate(0deg)" : "rotate(-90deg)", transition: "transform 0.15s" }} />
-                        <span style={styles.categoryName}>{cat.category}</span>
-                        <span style={styles.categoryCount}>{cat.items.length} items</span>
-                        <span style={{ ...styles.categoryScore, color: scoreColor(catScore) }}>{pct(catScore)}</span>
-                      </button>
-                      {isOpen && (
-                        <div style={styles.itemList}>
-                          {cat.items.map((q) => (
-                            <ChecklistRow
-                              key={q.id}
-                              q={q}
-                              value={answers[q.id]}
-                              onChange={(p) => setAnswer(q.id, p)}
-                              saveAttempted={saveAttempted}
-                            />
-                          ))}
+                {filteredBySection.map((sec) => (
+                  <div key={sec.section} style={{ marginTop: 14 }}>
+                    <div style={styles.formSectionLabel}>{sec.section}</div>
+                    {sec.categories.map((cat) => {
+                      const catScore = scoreFor(cat.items, answers);
+                      const key = `${domain.id}::${sec.section}::${cat.category}`;
+                      const isOpen = openCategory === key || query.trim().length > 0;
+                      return (
+                        <div key={key} style={styles.categoryCard}>
+                          <button className="categoryHeader" onClick={() => setOpenCategory(isOpen && !query ? null : key)}>
+                            <ChevronDown size={16} style={{ transform: isOpen ? "rotate(0deg)" : "rotate(-90deg)", transition: "transform 0.15s" }} />
+                            <span style={styles.categoryName}>{cat.category}</span>
+                            <span style={styles.categoryCount}>{cat.items.length} items</span>
+                            <span style={{ ...styles.categoryScore, color: scoreColor(catScore) }}>{pct(catScore)}</span>
+                          </button>
+                          {isOpen && (
+                            <div style={styles.itemList}>
+                              {cat.items.map((q) => (
+                                <ChecklistRow
+                                  key={q.id}
+                                  q={q}
+                                  value={answers[q.id]}
+                                  onChange={(p) => setAnswer(q.id, p)}
+                                  saveAttempted={saveAttempted}
+                                />
+                              ))}
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  );
-                })}
+                      );
+                    })}
+                  </div>
+                ))}
               </div>
             );
           })}

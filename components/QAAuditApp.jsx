@@ -78,18 +78,18 @@ export default function QAAuditApp() {
     }
   };
 
-  const addItem = async (domainId, category, item, weight, type) => {
-    const raw = await api("items", { method: "POST", body: JSON.stringify({ domainId, category, item, weight, type }) });
+  const addItem = async (domainId, section, category, item, weight, type) => {
+    const raw = await api("items", { method: "POST", body: JSON.stringify({ domainId, section, category, item, weight, type }) });
     setItems((prev) => [
       ...prev,
-      { id: raw.id, domainId: raw.domain_id, category: raw.category, item: raw.question, weight: raw.weight, type: raw.type },
+      { id: raw.id, domainId: raw.domain_id, section: raw.section, category: raw.category, item: raw.question, weight: raw.weight, type: raw.type },
     ]);
   };
 
   const bulkImportItems = async (domainId, rows) => {
     const raw = await api("items", { method: "POST", body: JSON.stringify({ domainId, bulk: rows }) });
     const mapped = raw.map((r) => ({
-      id: r.id, domainId: r.domain_id, category: r.category, item: r.question, weight: r.weight, type: r.type,
+      id: r.id, domainId: r.domain_id, section: r.section, category: r.category, item: r.question, weight: r.weight, type: r.type,
     }));
     setItems((prev) => [...prev, ...mapped]);
   };

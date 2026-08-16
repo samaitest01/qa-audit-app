@@ -26,12 +26,16 @@ export const styles = {
   statCardIcon: { width: 30, height: 30, borderRadius: 8, background: "rgba(232,163,61,0.12)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 12 },
   statCardValue: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 26, fontWeight: 700, lineHeight: 1.1 },
   statCardLabel: { fontSize: 12, color: "#8b96a3", marginTop: 6 },
+  statCardRing: { display: "flex", alignItems: "center", gap: 12 },
   sectionSplit: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16, marginTop: 8 },
   dashboardSection: { background: "#12181f", border: "1px solid #1f2933", borderRadius: 14, padding: 20 },
-  coverageMeter: { display: "flex", alignItems: "center", gap: 18, marginTop: 4 },
   sectionTitleRow: { display: "flex", alignItems: "center", gap: 8, marginBottom: 14 },
   sectionTitle: { fontSize: 13.5, fontWeight: 600, color: "#dbe1e6" },
   barList: { display: "flex", flexDirection: "column", gap: 12 },
+  notAuditedHeaderRow: { display: "flex", justifyContent: "space-between", paddingBottom: 6, borderBottom: "1px solid #232d38" },
+  notAuditedHeaderLabel: { fontSize: 10.5, color: "#7c8794", textTransform: "uppercase", letterSpacing: 0.4 },
+  notAuditedList: { display: "flex", flexDirection: "column" },
+  notAuditedRow: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "7px 0", borderBottom: "1px solid #171f28", fontSize: 13 },
   barRow: { display: "grid", gridTemplateColumns: "140px 1fr auto 32px", alignItems: "center", gap: 10 },
   barLabel: { fontSize: 13, color: "#c3cbd6", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
   barTrack: { height: 8, borderRadius: 99, background: "#1c2530", overflow: "hidden" },
@@ -52,6 +56,7 @@ export const styles = {
   searchWrap: { display: "flex", alignItems: "center", gap: 8, background: "#171f28", border: "1px solid #232d38", borderRadius: 10, padding: "9px 12px", marginTop: 22 },
   searchInput: { background: "transparent", border: "none", outline: "none", color: "#eef1f4", fontSize: 13, width: "100%" },
   domainSectionHeader: { display: "flex", justifyContent: "space-between", fontFamily: "'Space Grotesk', sans-serif", fontWeight: 600, fontSize: 15, padding: "0 4px 8px", borderBottom: "1px solid #1f2933" },
+  formSectionLabel: { fontSize: 11.5, fontWeight: 700, color: "#e8a33d", textTransform: "uppercase", letterSpacing: 0.5, padding: "0 4px 6px" },
   categoryCard: { border: "1px solid #1f2933", borderRadius: 12, marginTop: 12, overflow: "hidden", background: "#12181f" },
   categoryName: { fontWeight: 600, fontSize: 13.5, flex: 1, textAlign: "left", display: "flex", alignItems: "center", gap: 8 },
   categoryCount: { fontSize: 11.5, color: "#7c8794", marginRight: 14 },
@@ -81,6 +86,7 @@ export const styles = {
   domainBadge: { fontSize: 11, background: "#1d2632", color: "#c9b28a", padding: "3px 9px", borderRadius: 99, border: "1px solid #2a3440" },
   editorPanel: { border: "1px solid #2a3440", background: "#141b23", borderRadius: 12, padding: 18, marginTop: 6, marginBottom: 20 },
   checkGrid: { display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 },
+  templateSectionLabel: { fontSize: 13, fontWeight: 700, color: "#e8a33d", borderBottom: "1px solid #232d38", paddingBottom: 6 },
   templateCatLabel: { fontSize: 11.5, color: "#7c8794", textTransform: "uppercase", letterSpacing: 0.4, margin: "10px 0 6px" },
   templateRow: { display: "flex", alignItems: "center", gap: 10, padding: "7px 0", borderBottom: "1px solid #171f28" },
   templateItemText: { flex: 1, fontSize: 13 },
@@ -99,6 +105,7 @@ export const styles = {
   reportHeader: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid #1a1a1a", paddingBottom: 14 },
   reportTitle: { fontFamily: "'Space Grotesk', sans-serif", fontSize: 21, fontWeight: 700 },
   reportMetaGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10, fontSize: 12.5, marginTop: 14, color: "#333" },
+  reportSectionLabel: { fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: "#8a8272", marginBottom: 4 },
   reportCatHeader: { display: "flex", justifyContent: "space-between", fontWeight: 700, fontSize: 13, borderBottom: "1px solid #ccc", paddingBottom: 4, marginBottom: 6, fontFamily: "'IBM Plex Mono', monospace" },
   reportRow: { display: "flex", alignItems: "center", gap: 8, padding: "4px 0", fontSize: 12.5 },
   reportStatusDot: { width: 7, height: 7, borderRadius: 99, flexShrink: 0 },
@@ -117,6 +124,8 @@ export const css = `
 .primaryBtn:disabled { opacity:0.5; cursor:not-allowed; }
 .ghostBtn { display:flex; align-items:center; gap:6px; background:transparent; color:#aab4bf; border:1px solid #2a3440; padding:9px 14px; border-radius:9px; font-size:13px; cursor:pointer; }
 .ghostBtn:hover { border-color:#3a4552; color:#eef1f4; }
+.linkBtn { background:none; border:none; padding:0; color:#e8a33d; font-size:12.5px; font-weight:600; cursor:pointer; text-decoration:underline; }
+.linkBtn:hover { color:#f0b558; }
 .statusBtn { padding:6px 12px; border-radius:7px; border:1px solid; font-size:12px; font-weight:600; cursor:pointer; }
 .categoryHeader { display:flex; align-items:center; gap:10px; width:100%; padding:14px 18px; background:transparent; border:none; color:#eef1f4; cursor:pointer; }
 .categoryHeader:hover { background:#151b23; }

@@ -12,6 +12,7 @@ create table if not exists domains (
 create table if not exists checklist_items (
   id text primary key,
   domain_id text not null references domains(id) on delete cascade,
+  section text not null default 'Manual',
   category text not null,
   question text not null,
   weight int not null default 3,
@@ -19,6 +20,11 @@ create table if not exists checklist_items (
   created_at timestamptz not null default now()
 );
 create index if not exists checklist_items_domain_idx on checklist_items(domain_id);
+
+-- For a database that already had checklist_items before the `section`
+-- column existed, `create table if not exists` above is a no-op — run this
+-- to actually add the column. Safe to re-run.
+alter table checklist_items add column if not exists section text not null default 'Manual';
 
 create table if not exists projects (
   id text primary key,
