@@ -1,13 +1,17 @@
-import { Award, ClipboardList, FolderKanban, History, Percent, Target } from "lucide-react";
+import { useState } from "react";
+import { Award, ClipboardList, FolderKanban, History, Percent } from "lucide-react";
 import { pct, scoreColor } from "../../lib/scoring";
 import { quarterLabel } from "./utils";
 import { styles } from "./styles";
 
-const COVERAGE_RING_RADIUS = 38;
+const COVERAGE_RING_RADIUS = 22;
 const COVERAGE_RING_CIRCUMFERENCE = 2 * Math.PI * COVERAGE_RING_RADIUS;
 const RANKED_PROJECTS_LIMIT = 5;
+const NOT_AUDITED_PREVIEW_LIMIT = 8;
 
 export default function DashboardView({ audits, projects }) {
+  const [showAllNotAudited, setShowAllNotAudited] = useState(false);
+
   const projectStats = {};
   audits.forEach((a) => {
     const key = a.projectName || "Untitled";
@@ -18,11 +22,6 @@ export default function DashboardView({ audits, projects }) {
       projectStats[key].scoreCount += 1;
     }
   });
-
-  const projectRows = Object.entries(projectStats)
-    .map(([name, s]) => ({ name, count: s.count, avgScore: s.scoreCount ? s.scoreSum / s.scoreCount : null }))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 8);
 
   // Only projects with at least one scored audit can be ranked by score.
   const scoredProjectRows = Object.entries(projectStats)
@@ -43,7 +42,7 @@ export default function DashboardView({ audits, projects }) {
     audits.map((a) => a.projectId).filter((id) => projects.some((p) => p.id === id))
   );
   const auditedProjectCount = auditedProjectIds.size;
-  const notAuditedProjectCount = totalProjectCount - auditedProjectCount;
+  const notAuditedProjects = projects.filter((p) => !auditedProjectIds.has(p.id)).sort((a, b) => a.name.localeCompare(b.name));
   const coverageRatio = totalProjectCount ? auditedProjectCount / totalProjectCount : null;
   const coverageRingFill = coverageRatio === null ? 0 : Math.max(0, Math.min(1, coverageRatio));
 
@@ -69,42 +68,29 @@ export default function DashboardView({ audits, projects }) {
             <div style={styles.statCardLabel}>{label}</div>
           </div>
         ))}
+        <div style={styles.statCard}>
+          <div style={styles.statCardRing}>
+            <svg width="56" height="56" viewBox="0 0 56 56">
+              <circle cx="28" cy="28" r={COVERAGE_RING_RADIUS} fill="none" stroke="#232d38" strokeWidth="6" />
+              <circle
+                cx="28" cy="28" r={COVERAGE_RING_RADIUS} fill="none"
+                stroke="#e8a33d"
+                strokeWidth="6"
+                strokeLinecap="round"
+                strokeDasharray={COVERAGE_RING_CIRCUMFERENCE}
+                strokeDashoffset={COVERAGE_RING_CIRCUMFERENCE * (1 - coverageRingFill)}
+                transform="rotate(-90 28 28)"
+              />
+            </svg>
+            <div>
+              <div style={styles.statCardValue}>{pct(coverageRatio)}</div>
+              <div style={{ ...styles.statCardLabel, fontSize: 14 }}>{auditedProjectCount}/{totalProjectCount} projects audited</div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div style={styles.sectionSplit}>
-        <div style={styles.dashboardSection}>
-          <div style={styles.sectionTitleRow}>
-            <Target size={15} color="#7c8794" />
-            <span style={styles.sectionTitle}>Project Audit Coverage</span>
-          </div>
-          {totalProjectCount === 0 ? (
-            <p style={styles.subtle}>No projects yet.</p>
-          ) : (
-            <div style={styles.coverageMeter}>
-              <svg width="88" height="88" viewBox="0 0 88 88">
-                <circle cx="44" cy="44" r={COVERAGE_RING_RADIUS} fill="none" stroke="#1c2530" strokeWidth="8" />
-                <circle
-                  cx="44" cy="44" r={COVERAGE_RING_RADIUS} fill="none"
-                  stroke="#e8a33d"
-                  strokeWidth="8"
-                  strokeLinecap="round"
-                  strokeDasharray={COVERAGE_RING_CIRCUMFERENCE}
-                  strokeDashoffset={COVERAGE_RING_CIRCUMFERENCE * (1 - coverageRingFill)}
-                  transform="rotate(-90 44 44)"
-                  style={{ transition: "stroke-dashoffset 0.4s ease" }}
-                />
-              </svg>
-              <div>
-                <div style={styles.scoreBig}>{pct(coverageRatio)}</div>
-                <div style={styles.subtle}>
-                  {auditedProjectCount} of {totalProjectCount} project{totalProjectCount !== 1 ? "s" : ""} audited
-                </div>
-                <div style={{ ...styles.subtle, marginTop: 2 }}>{notAuditedProjectCount} not yet audited</div>
-              </div>
-            </div>
-          )}
-        </div>
-
         <div style={styles.dashboardSection}>
           <div style={styles.sectionTitleRow}>
             <Award size={15} color="#7c8794" />
@@ -160,28 +146,30 @@ export default function DashboardView({ audits, projects }) {
         <div style={styles.dashboardSection}>
           <div style={styles.sectionTitleRow}>
             <FolderKanban size={15} color="#7c8794" />
-            <span style={styles.sectionTitle}>Top Audited Projects</span>
+            <span style={styles.sectionTitle}>Not Yet Audited</span>
           </div>
-          {projectRows.length === 0 ? (
-            <p style={styles.subtle}>No audits recorded yet.</p>
+          {notAuditedProjects.length === 0 ? (
+            <p style={styles.subtle}>{totalProjectCount === 0 ? "No projects yet." : "Every project has at least one audit."}</p>
           ) : (
-            <div style={styles.barList}>
-              {projectRows.map((row) => (
-                <div key={row.name} style={styles.barRow}>
-                  <span style={styles.barLabel} title={row.name}>{row.name}</span>
-                  <div style={styles.barTrack}>
-                    <div
-                      style={{
-                        ...styles.barFill,
-                        width: `${row.avgScore !== null ? Math.max(0, Math.min(100, row.avgScore * 100)) : 0}%`,
-                      }}
-                    />
+            <>
+              <div style={styles.notAuditedHeaderRow}>
+                <span />
+                <span style={styles.notAuditedHeaderLabel}>Client</span>
+              </div>
+              <div style={styles.notAuditedList}>
+                {(showAllNotAudited ? notAuditedProjects : notAuditedProjects.slice(0, NOT_AUDITED_PREVIEW_LIMIT)).map((p) => (
+                  <div key={p.id} style={styles.notAuditedRow}>
+                    <span style={{ ...styles.barLabel, flex: 1, minWidth: 0 }} title={p.name}>{p.name}</span>
+                    <span style={styles.subtle}>{p.client}</span>
                   </div>
-                  <span style={{ ...styles.barScoreBadge, color: scoreColor(row.avgScore) }}>{pct(row.avgScore)}</span>
-                  <span style={styles.barValue}>{row.count}</span>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+              {notAuditedProjects.length > NOT_AUDITED_PREVIEW_LIMIT && (
+                <button className="linkBtn" style={{ marginTop: 8 }} onClick={() => setShowAllNotAudited((v) => !v)}>
+                  {showAllNotAudited ? "Show less" : `+${notAuditedProjects.length - NOT_AUDITED_PREVIEW_LIMIT} more`}
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>
