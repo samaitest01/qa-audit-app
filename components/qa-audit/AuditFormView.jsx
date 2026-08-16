@@ -4,6 +4,7 @@ import { pct, scoreColor, scoreFor } from "../../lib/scoring";
 import { STATUSES, STATUS_COLOR } from "./constants";
 import Field from "./Field";
 import { styles } from "./styles";
+import { filterItemsForProjectType } from "./utils";
 
 export default function AuditFormView({
   domains, items, projects, audits,
@@ -55,13 +56,16 @@ export default function AuditFormView({
 
   // Checklist items are grouped by domain, then by section (Manual/Automation/
   // Shared), then by category, so the form can render collapsible
-  // domain -> section -> category -> item sections.
+  // domain -> section -> category -> item sections. Each domain's items are
+  // first narrowed to the project's type (Manual/Automation) — see
+  // filterItemsForProjectType for the fallback when a domain has nothing in
+  // that type at all.
   const sections = useMemo(() => {
     const groups = [];
     domainIds.forEach((did) => {
       const domain = domains.find((d) => d.id === did);
       if (!domain) return;
-      const domainItems = items.filter((it) => it.domainId === did);
+      const domainItems = filterItemsForProjectType(items.filter((it) => it.domainId === did), project?.type);
       const bySection = [];
       domainItems.forEach((it) => {
         const section = it.section || "Manual";
@@ -80,7 +84,7 @@ export default function AuditFormView({
       groups.push({ domain, bySection });
     });
     return groups;
-  }, [domainIds, domains, items]);
+  }, [domainIds, domains, items, project?.type]);
 
   const allItems = useMemo(
     () => sections.flatMap((s) => s.bySection.flatMap((sec) => sec.categories.flatMap((c) => c.items))),

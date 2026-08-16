@@ -9,6 +9,22 @@ export function quarterLabel(dateString) {
   }
 }
 
+// A project is typed Manual or Automation; a checklist item's Section is
+// Manual, Automation, or "Shared (Manual & Automation)" (always included).
+// Within a single domain, if NONE of its items match the project's type,
+// the whole domain is included unfiltered rather than showing nothing —
+// e.g. an Automation-type project on the Automotive domain (which is
+// entirely Section=Manual) still gets its full Automotive checklist,
+// since there's no Automation-specific content there to filter down to.
+export function filterItemsForProjectType(domainItems, projectType) {
+  if (!projectType) return domainItems;
+  const matching = domainItems.filter((it) => {
+    const section = it.section || "Manual";
+    return section === "Shared (Manual & Automation)" || section === projectType;
+  });
+  return matching.length > 0 ? matching : domainItems;
+}
+
 export function groupCounts(items, keyFn) {
   return items.reduce((acc, item) => {
     const key = keyFn(item);

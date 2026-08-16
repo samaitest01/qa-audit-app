@@ -45,7 +45,7 @@ export default async function handler(req, res) {
       item: it.question, weight: it.weight, type: it.type,
     })),
     projects: projects.data.map((p) => ({
-      id: p.id, name: p.name, client: p.client, domainIds: p.domain_ids || [],
+      id: p.id, name: p.name, client: p.client, domainIds: p.domain_ids || [], type: p.type || "Manual",
     })),
     audits: audits.data.map((a) => ({
       id: a.id, projectId: a.project_id, projectName: a.project_name, client: a.client,

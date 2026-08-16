@@ -16,7 +16,7 @@ export default function ProjectsView({ projects, domains, onSave, onDelete }) {
             {projects.length} project{projects.length !== 1 ? "s" : ""}. Each holds one or more domains, which decide its audit checklist.
           </p>
         </div>
-        <button className="primaryBtn" onClick={() => setEditing({ name: "", client: "", domainIds: [] })}>
+        <button className="primaryBtn" onClick={() => setEditing({ name: "", client: "", domainIds: [], type: "Manual" })}>
           <Plus size={15} /> New project
         </button>
       </div>
@@ -56,6 +56,7 @@ export default function ProjectsView({ projects, domains, onSave, onDelete }) {
               </div>
             </div>
             <div style={styles.domainBadgeRow}>
+              <span style={styles.typeBadge}>{p.type === "Automation" ? "Automation" : "Manual"}</span>
               {(p.domainIds || []).map((did) => {
                 const d = domains.find((x) => x.id === did);
                 return <span key={did} style={styles.domainBadge}>{d?.name || did}</span>;
@@ -73,6 +74,7 @@ function ProjectEditor({ project, domains, onCancel, onSave }) {
   const [name, setName] = useState(project.name || "");
   const [client, setClient] = useState(project.client || "");
   const [domainIds, setDomainIds] = useState(project.domainIds || []);
+  const [type, setType] = useState(project.type === "Automation" ? "Automation" : "Manual");
   const assignable = domains.filter((d) => !d.builtin);
 
   const toggle = (id) =>
@@ -86,6 +88,12 @@ function ProjectEditor({ project, domains, onCancel, onSave }) {
         </Field>
         <Field label="Client">
           <input value={client} onChange={(e) => setClient(e.target.value)} placeholder="e.g. Pentana Solutions" />
+        </Field>
+        <Field label="Type">
+          <select value={type} onChange={(e) => setType(e.target.value)}>
+            <option>Manual</option>
+            <option>Automation</option>
+          </select>
         </Field>
       </div>
       <div style={{ marginTop: 14 }}>
@@ -109,7 +117,7 @@ function ProjectEditor({ project, domains, onCancel, onSave }) {
         <button
           className="primaryBtn"
           onClick={() => {
-            if (name.trim()) onSave({ ...project, name: name.trim(), client: client.trim(), domainIds });
+            if (name.trim()) onSave({ ...project, name: name.trim(), client: client.trim(), domainIds, type });
           }}
         >
           Save project

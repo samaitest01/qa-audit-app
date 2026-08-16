@@ -4,17 +4,17 @@ export default async function handler(req, res) {
   const { id } = req.query;
 
   if (req.method === "PUT") {
-    const { name, client, domainIds } = req.body || {};
+    const { name, client, domainIds, type } = req.body || {};
     const { data, error } = await supabaseAdmin
       .from("projects")
-      .update({ name, client, domain_ids: domainIds || [] })
+      .update({ name, client, domain_ids: domainIds || [], type: type === "Automation" ? "Automation" : "Manual" })
       .eq("id", id)
       .select()
       .single();
     if (error) return res.status(500).json({ error: error.message });
 
     // DB column is domain_ids (snake_case); the frontend works in camelCase.
-    return res.status(200).json({ id: data.id, name: data.name, client: data.client, domainIds: data.domain_ids || [] });
+    return res.status(200).json({ id: data.id, name: data.name, client: data.client, domainIds: data.domain_ids || [], type: data.type });
   }
 
   if (req.method === "DELETE") {

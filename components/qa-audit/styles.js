@@ -84,6 +84,7 @@ export const styles = {
   projectName: { fontWeight: 600, fontSize: 14.5 },
   domainBadgeRow: { display: "flex", gap: 6, flexWrap: "wrap", marginTop: 12 },
   domainBadge: { fontSize: 11, background: "#1d2632", color: "#c9b28a", padding: "3px 9px", borderRadius: 99, border: "1px solid #2a3440" },
+  typeBadge: { fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3, background: "rgba(232,163,61,0.14)", color: "#e8a33d", padding: "3px 9px", borderRadius: 99 },
   editorPanel: { border: "1px solid #2a3440", background: "#141b23", borderRadius: 12, padding: 18, marginTop: 6, marginBottom: 20 },
   checkGrid: { display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 },
   templateSectionLabel: { fontSize: 13, fontWeight: 700, color: "#e8a33d", borderBottom: "1px solid #232d38", paddingBottom: 6 },

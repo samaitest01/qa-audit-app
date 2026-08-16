@@ -243,7 +243,7 @@ export default function QAAuditApp() {
           />
         )}
         {view === "report" && reportAudit && (
-          <ReportView audit={reportAudit} items={items} domains={domains} onBack={() => setView("history")} />
+          <ReportView audit={reportAudit} items={items} domains={domains} projects={projects} onBack={() => setView("history")} />
         )}
         {view === "projects" && (
           <ProjectsView projects={projects} domains={domains} onSave={saveProject} onDelete={deleteProject} />

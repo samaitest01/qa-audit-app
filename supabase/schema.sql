@@ -31,8 +31,14 @@ create table if not exists projects (
   name text not null,
   client text,
   domain_ids jsonb not null default '[]',
+  type text not null default 'Manual',
   created_at timestamptz not null default now()
 );
+
+-- For a database that already had projects before the `type` column
+-- existed, `create table if not exists` above is a no-op — run this to
+-- actually add the column. Safe to re-run.
+alter table projects add column if not exists type text not null default 'Manual';
 
 create table if not exists audits (
   id text primary key,

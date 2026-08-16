@@ -1,20 +1,25 @@
 import { AlertTriangle, FileDown, X } from "lucide-react";
 import { pct, scoreColor, scoreFor } from "../../lib/scoring";
 import { STATUS_COLOR } from "./constants";
-import { quarterLabel } from "./utils";
+import { filterItemsForProjectType, quarterLabel } from "./utils";
 import { styles } from "./styles";
 
-export default function ReportView({ audit, items, domains, onBack }) {
+export default function ReportView({ audit, items, domains, projects, onBack }) {
   const missing = [];
   if (!audit.auditee?.trim()) missing.push("Auditee");
   if (!audit.auditor?.trim()) missing.push("Auditor");
   if (!audit.answeredCount) missing.push("checklist answers");
   const isIncomplete = missing.length > 0;
 
+  // Mirrors the same Manual/Automation type filter the audit form applied
+  // when this audit was taken, so the report doesn't list questions (as
+  // unanswered) that were never actually part of the checklist.
+  const project = projects.find((p) => p.id === audit.projectId);
+
   const groups = (audit.domainIds || [])
     .map((did) => {
       const domain = domains.find((d) => d.id === did);
-      const domainItems = items.filter((it) => it.domainId === did);
+      const domainItems = filterItemsForProjectType(items.filter((it) => it.domainId === did), project?.type);
       const byCat = [];
       domainItems.forEach((it) => {
         let bucket = byCat.find((x) => x.category === it.category);
