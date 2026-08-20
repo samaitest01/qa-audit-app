@@ -1,11 +1,21 @@
-import { useState } from "react";
-import { CheckCircle2, Pencil, Plus, Trash2, X } from "lucide-react";
+import { useMemo, useState } from "react";
+import { CheckCircle2, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import Field from "./Field";
 import { styles } from "./styles";
 
 export default function ProjectsView({ projects, domains, onSave, onDelete }) {
   const [editing, setEditing] = useState(null);
   const [confirmId, setConfirmId] = useState(null);
+  const [query, setQuery] = useState("");
+
+  const filteredProjects = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return projects;
+    return projects.filter((p) => {
+      const domainNames = (p.domainIds || []).map((did) => domains.find((x) => x.id === did)?.name || "").join(" ");
+      return [p.name, p.client, p.type, domainNames].join(" ").toLowerCase().includes(q);
+    });
+  }, [projects, domains, query]);
 
   return (
     <div>
@@ -21,6 +31,16 @@ export default function ProjectsView({ projects, domains, onSave, onDelete }) {
         </button>
       </div>
 
+      <div style={{ ...styles.searchWrap, marginTop: 0, marginBottom: 18, maxWidth: 360 }}>
+        <Search size={14} color="#7c8794" />
+        <input
+          style={styles.searchInput}
+          placeholder="Search projects by name, client, or domain…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+      </div>
+
       {editing && (
         <ProjectEditor
           project={editing}
@@ -30,8 +50,12 @@ export default function ProjectsView({ projects, domains, onSave, onDelete }) {
         />
       )}
 
+      {filteredProjects.length === 0 && (
+        <p style={styles.subtle}>No projects match "{query}".</p>
+      )}
+
       <div style={styles.cardGrid}>
-        {projects.map((p) => (
+        {filteredProjects.map((p) => (
           <div key={p.id} style={styles.projectCard}>
             <div style={styles.projectCardTop}>
               <div>
