@@ -1,11 +1,20 @@
-import { useState } from "react";
-import { CheckCircle2, ClipboardList, FileDown, History, Trash2 } from "lucide-react";
+import { useMemo, useState } from "react";
+import { CheckCircle2, ClipboardList, FileDown, History, Search, Trash2 } from "lucide-react";
 import { pct, scoreColor } from "../../lib/scoring";
-import { quarterLabel } from "./utils";
+import { isDraftAudit, quarterLabel } from "./utils";
 import { styles } from "./styles";
 
 export default function HistoryView({ audits, onOpen, onDelete, onReport }) {
   const [confirmId, setConfirmId] = useState(null);
+  const [query, setQuery] = useState("");
+
+  const filteredAudits = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return audits;
+    return audits.filter((a) =>
+      [a.projectName, a.auditee, a.auditor, a.date, quarterLabel(a.date)].join(" ").toLowerCase().includes(q)
+    );
+  }, [audits, query]);
 
   if (audits.length === 0) {
     return (
@@ -21,12 +30,27 @@ export default function HistoryView({ audits, onOpen, onDelete, onReport }) {
     <div>
       <h1 style={styles.h1}>Audit History</h1>
       <p style={styles.subtle}>{audits.length} audit{audits.length !== 1 ? "s" : ""} recorded.</p>
+
+      <div style={{ ...styles.searchWrap, marginTop: 16, maxWidth: 360 }}>
+        <Search size={14} color="#7c8794" />
+        <input
+          style={styles.searchInput}
+          placeholder="Search by project, auditee, or auditor…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+      </div>
+
+      {filteredAudits.length === 0 && (
+        <p style={styles.subtle}>No audits match "{query}".</p>
+      )}
+
       <div style={styles.table}>
         <div style={styles.tableHeadRow}>
           <span>Project</span><span>Quarter</span><span>Auditee</span><span>Auditor</span><span>Date</span><span>Score</span><span></span>
         </div>
-        {audits.map((a) => {
-          const isDraft = (a.totalCount || 0) > (a.answeredCount || 0);
+        {filteredAudits.map((a) => {
+          const isDraft = isDraftAudit(a);
           return (
             <div key={a.id} style={styles.tableRow}>
               <span style={styles.tableProject}>

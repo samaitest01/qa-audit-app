@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Award, ClipboardList, FolderKanban, History, Percent } from "lucide-react";
 import { pct, scoreColor } from "../../lib/scoring";
-import { quarterLabel } from "./utils";
+import { isDraftAudit, quarterLabel } from "./utils";
 import { styles } from "./styles";
 
 const COVERAGE_RING_RADIUS = 22;
@@ -12,8 +12,13 @@ const NOT_AUDITED_PREVIEW_LIMIT = 8;
 export default function DashboardView({ audits, projects }) {
   const [showAllNotAudited, setShowAllNotAudited] = useState(false);
 
+  // Drafts (audits saved mid-checklist, before every item is answered)
+  // shouldn't count as a completed audit of a project — only finished
+  // audits should drive coverage, average score, and the rankings below.
+  const completedAudits = audits.filter((a) => !isDraftAudit(a));
+
   const projectStats = {};
-  audits.forEach((a) => {
+  completedAudits.forEach((a) => {
     const key = a.projectName || "Untitled";
     if (!projectStats[key]) projectStats[key] = { count: 0, scoreSum: 0, scoreCount: 0 };
     projectStats[key].count += 1;
@@ -30,7 +35,7 @@ export default function DashboardView({ audits, projects }) {
   const topScorers = [...scoredProjectRows].sort((a, b) => b.avgScore - a.avgScore).slice(0, RANKED_PROJECTS_LIMIT);
   const lowScorers = [...scoredProjectRows].sort((a, b) => a.avgScore - b.avgScore).slice(0, RANKED_PROJECTS_LIMIT);
 
-  const scoredAudits = audits.filter((a) => a.score !== null && a.score !== undefined);
+  const scoredAudits = completedAudits.filter((a) => a.score !== null && a.score !== undefined);
   const avgScore = scoredAudits.length ? scoredAudits.reduce((sum, a) => sum + a.score, 0) / scoredAudits.length : null;
 
   const recentAudits = audits.slice(0, 8);
@@ -39,7 +44,7 @@ export default function DashboardView({ audits, projects }) {
   // vs. how many have never been audited yet.
   const totalProjectCount = projects.length;
   const auditedProjectIds = new Set(
-    audits.map((a) => a.projectId).filter((id) => projects.some((p) => p.id === id))
+    completedAudits.map((a) => a.projectId).filter((id) => projects.some((p) => p.id === id))
   );
   const auditedProjectCount = auditedProjectIds.size;
   const notAuditedProjects = projects.filter((p) => !auditedProjectIds.has(p.id)).sort((a, b) => a.name.localeCompare(b.name));

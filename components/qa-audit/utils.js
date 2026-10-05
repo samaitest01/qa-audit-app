@@ -25,6 +25,14 @@ export function filterItemsForProjectType(domainItems, projectType) {
   return matching.length > 0 ? matching : domainItems;
 }
 
+// A saved audit is only complete once every checklist item it was created
+// against has been answered (see AuditFormView's handleSaveDraft); anything
+// less is a draft and shouldn't count as a completed audit of that project
+// for coverage or scoring purposes.
+export function isDraftAudit(audit) {
+  return (audit.totalCount || 0) > (audit.answeredCount || 0);
+}
+
 export function groupCounts(items, keyFn) {
   return items.reduce((acc, item) => {
     const key = keyFn(item);
