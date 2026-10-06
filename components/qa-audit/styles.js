@@ -125,9 +125,11 @@ export const css = `
 .primaryBtn:disabled { opacity:0.5; cursor:not-allowed; }
 .ghostBtn { display:flex; align-items:center; gap:6px; background:transparent; color:#aab4bf; border:1px solid #2a3440; padding:9px 14px; border-radius:9px; font-size:13px; cursor:pointer; }
 .ghostBtn:hover { border-color:#3a4552; color:#eef1f4; }
+.ghostBtn:disabled { opacity:0.5; cursor:not-allowed; }
 .linkBtn { background:none; border:none; padding:0; color:#e8a33d; font-size:12.5px; font-weight:600; cursor:pointer; text-decoration:underline; }
 .linkBtn:hover { color:#f0b558; }
 .statusBtn { padding:6px 12px; border-radius:7px; border:1px solid; font-size:12px; font-weight:600; cursor:pointer; }
+.statusBtn:disabled { opacity:0.6; cursor:not-allowed; }
 .categoryHeader { display:flex; align-items:center; gap:10px; width:100%; padding:14px 18px; background:transparent; border:none; color:#eef1f4; cursor:pointer; }
 .categoryHeader:hover { background:#151b23; }
 .typeTag { font-size:10px; font-weight:700; padding:2px 7px; border-radius:5px; text-transform:uppercase; letter-spacing:0.3px; }

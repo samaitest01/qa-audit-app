@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Bookmark, ChevronDown, FolderKanban, Save, Search, X } from "lucide-react";
+import { AlertTriangle, Bookmark, ChevronDown, FolderKanban, Save, Search, X } from "lucide-react";
 import { pct, scoreColor, scoreFor } from "../../lib/scoring";
 import { STATUSES, STATUS_COLOR } from "./constants";
 import Field from "./Field";
@@ -48,11 +48,24 @@ export default function AuditFormView({
   const clientProjects = clientName ? projects.filter((p) => p.client === clientName) : [];
 
   const project = projects.find((p) => p.id === projectId);
+
+  // An existing audit's project may since have been deleted — the project
+  // row is gone (project_id is nulled out in the DB, see
+  // supabase/schema.sql), so `project` won't resolve. The audit itself and
+  // its answers should still be viewable rather than vanishing behind
+  // "Pick a project first": fall back to the audit's own stored domainIds
+  // and render it read-only instead.
+  const projectMissing = !!existing && !project;
+
   const missingClient = saveAttempted && !clientName;
   const missingProject = saveAttempted && !project;
   const missingAuditee = saveAttempted && !auditee.trim();
   const missingAuditor = saveAttempted && !auditor.trim();
-  const domainIds = project ? Array.from(new Set(["core", ...(project.domainIds || [])])) : [];
+  const domainIds = project
+    ? Array.from(new Set(["core", ...(project.domainIds || [])]))
+    : projectMissing
+      ? Array.from(new Set(["core", ...(existing.domainIds || [])]))
+      : [];
 
   // Checklist items are grouped by domain, then by section (Manual/Automation/
   // Shared), then by category, so the form can render collapsible
@@ -205,20 +218,28 @@ export default function AuditFormView({
               <X size={14} /> Start new
             </button>
           )}
-          <button className="ghostBtn" onClick={handleSaveDraft}>
+          <button className="ghostBtn" onClick={handleSaveDraft} disabled={projectMissing}>
             <Bookmark size={14} /> Save draft
           </button>
-          <button className="primaryBtn" onClick={handleSave}>
+          <button className="primaryBtn" onClick={handleSave} disabled={projectMissing}>
             <Save size={15} /> Save audit
           </button>
         </div>
       </div>
+
+      {projectMissing && (
+        <div style={styles.reportWarning}>
+          <AlertTriangle size={15} />
+          <span>The project for this audit has been deleted. You can still view the checklist and answers below, but this record is read-only and can no longer be edited or re-saved.</span>
+        </div>
+      )}
 
       <div style={styles.metaGridAudit}>
         <Field label="Client" error={missingClient}>
           <select
             value={clientName}
             onChange={(e) => { setClientName(e.target.value); setProjectId(""); }}
+            disabled={projectMissing}
             style={missingClient ? { borderColor: "#e08480" } : {}}
           >
             <option value="">Select a client…</option>
@@ -229,7 +250,7 @@ export default function AuditFormView({
           <select
             value={projectId}
             onChange={(e) => setProjectId(e.target.value)}
-            disabled={!clientName}
+            disabled={!clientName || projectMissing}
             style={missingProject ? { borderColor: "#e08480" } : {}}
           >
             <option value="">{clientName ? "Select a project…" : "Select a client first…"}</option>
@@ -243,6 +264,7 @@ export default function AuditFormView({
             placeholder="Person being audited"
             value={auditee}
             onChange={(e) => setAuditee(e.target.value)}
+            disabled={projectMissing}
             style={missingAuditee ? { borderColor: "#e08480" } : {}}
           />
         </Field>
@@ -251,15 +273,16 @@ export default function AuditFormView({
             placeholder="Person conducting the audit"
             value={auditor}
             onChange={(e) => setAuditor(e.target.value)}
+            disabled={projectMissing}
             style={missingAuditor ? { borderColor: "#e08480" } : {}}
           />
         </Field>
         <Field label="Audit date">
-          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} disabled={projectMissing} />
         </Field>
       </div>
 
-      {project && (
+      {(project || projectMissing) && (
         <div style={styles.domainBadgeRow}>
           {domainIds.map((did) => {
             const d = domains.find((x) => x.id === did);
@@ -268,7 +291,7 @@ export default function AuditFormView({
         </div>
       )}
 
-      {project && (
+      {(project || projectMissing) && (
         <>
           <div style={styles.scorePanel}>
             <svg width="72" height="72" viewBox="0 0 72 72">
@@ -351,6 +374,7 @@ export default function AuditFormView({
                                   value={answers[q.id]}
                                   onChange={(p) => setAnswer(q.id, p)}
                                   saveAttempted={saveAttempted}
+                                  readOnly={projectMissing}
                                 />
                               ))}
                             </div>
@@ -369,7 +393,7 @@ export default function AuditFormView({
   );
 }
 
-function ChecklistRow({ q, value, onChange, saveAttempted }) {
+function ChecklistRow({ q, value, onChange, saveAttempted, readOnly }) {
   const status = value?.status;
   const comment = value?.comment || "";
   const missingStatus = saveAttempted && !status;
@@ -388,6 +412,7 @@ function ChecklistRow({ q, value, onChange, saveAttempted }) {
             <button
               key={s}
               onClick={() => onChange({ status: s })}
+              disabled={readOnly}
               className="statusBtn"
               style={{
                 background: status === s ? STATUS_COLOR[s] : "transparent",
@@ -405,6 +430,7 @@ function ChecklistRow({ q, value, onChange, saveAttempted }) {
             placeholder="Comment (required)"
             value={comment}
             onChange={(e) => onChange({ comment: e.target.value })}
+            disabled={readOnly}
           />
           {(missingStatus || missingComment) && (
             <div style={styles.validationHint}>

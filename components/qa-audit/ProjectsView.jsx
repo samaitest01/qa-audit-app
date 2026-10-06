@@ -67,7 +67,7 @@ export default function ProjectsView({ projects, domains, onSave, onDelete }) {
                 {confirmId === p.id ? (
                   <button
                     className="iconBtn iconBtnDanger"
-                    title="Confirm delete — this also deletes its audit history"
+                    title="Confirm delete — its past audits stay in Audit History, viewable read-only"
                     onClick={() => { onDelete(p.id); setConfirmId(null); }}
                   >
                     <CheckCircle2 size={14} /> Confirm
