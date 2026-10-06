@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Award, ClipboardList, FolderKanban, History, Percent } from "lucide-react";
+import { Award, Clock, ClipboardList, FolderKanban, History, Percent } from "lucide-react";
 import { pct, scoreColor } from "../../lib/scoring";
 import { isDraftAudit, quarterLabel } from "./utils";
 import { styles } from "./styles";
@@ -60,9 +60,14 @@ export default function DashboardView({ audits, projects }) {
   const coverageRatio = totalProjectCount ? auditedProjectCount / totalProjectCount : null;
   const coverageRingFill = coverageRatio === null ? 0 : Math.max(0, Math.min(1, coverageRatio));
 
+  // Same count as the Not Yet Audited list below — surfaced here directly
+  // so it doesn't have to be inferred by subtracting the ring's numbers.
+  const pendingProjectCount = notAuditedProjects.length;
+
   const stats = [
     { icon: ClipboardList, label: "Total Audits", value: audits.length },
     { icon: Percent, label: "Average Score", value: pct(avgScore), color: scoreColor(avgScore) },
+    { icon: Clock, label: "Pending", value: pendingProjectCount },
   ];
 
   return (
