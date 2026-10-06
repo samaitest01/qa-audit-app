@@ -23,6 +23,7 @@ export default function AuditFormView({
   const [openCategory, setOpenCategory] = useState(null);
   const [query, setQuery] = useState("");
   const [saveAttempted, setSaveAttempted] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   // Reload the form fields whenever a different existing audit is opened for
   // editing (activeAuditId changes) — intentionally not reacting to `existing`
@@ -122,6 +123,13 @@ export default function AuditFormView({
   const setAnswer = (id, patch) => setAnswers((prev) => ({ ...prev, [id]: { ...prev[id], ...patch } }));
 
   const handleSave = async () => {
+    // Guards against the Save button firing multiple overlapping saves —
+    // e.g. a few impatient clicks before the first request resolves — each
+    // of which would otherwise POST a brand-new, fully duplicate audit
+    // record (no client-side save is idempotent; the server always
+    // assigns a fresh id).
+    if (saving) return;
+
     setSaveAttempted(true);
     if (!project) {
       showToast("Pick a project first.");
@@ -140,6 +148,7 @@ export default function AuditFormView({
       return;
     }
 
+    setSaving(true);
     try {
       await onSave({
         id: activeAuditId,
@@ -158,6 +167,8 @@ export default function AuditFormView({
       startNew();
     } catch (e) {
       showToast(e.message || "Unable to save audit.");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -166,10 +177,12 @@ export default function AuditFormView({
   // (that would light up every unanswered item's red border) and it stays
   // on the same audit afterward instead of resetting the form.
   const handleSaveDraft = async () => {
+    if (saving) return;
     if (!project) {
       showToast("Pick a project first.");
       return;
     }
+    setSaving(true);
     try {
       await onSave(
         {
@@ -190,6 +203,8 @@ export default function AuditFormView({
       );
     } catch (e) {
       showToast(e.message || "Unable to save draft.");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -231,11 +246,11 @@ export default function AuditFormView({
               <X size={14} /> Start new
             </button>
           )}
-          <button className="ghostBtn" onClick={handleSaveDraft} disabled={projectMissing}>
+          <button className="ghostBtn" onClick={handleSaveDraft} disabled={projectMissing || saving}>
             <Bookmark size={14} /> Save draft
           </button>
-          <button className="primaryBtn" onClick={handleSave} disabled={projectMissing}>
-            <Save size={15} /> Save audit
+          <button className="primaryBtn" onClick={handleSave} disabled={projectMissing || saving}>
+            <Save size={15} /> {saving ? "Saving…" : "Save audit"}
           </button>
         </div>
       </div>
