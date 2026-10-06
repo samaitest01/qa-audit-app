@@ -57,14 +57,24 @@ export default function AuditFormView({
   // and render it read-only instead.
   const projectMissing = !!existing && !project;
 
+  // Editing an existing audit without changing which project it's for
+  // should show the checklist as it actually was when the audit was taken,
+  // not re-derive it from the project's *current* domains/type — a project
+  // can gain/lose domains or get retyped Manual<->Automation after an audit
+  // was saved, and recomputing from "now" would silently swap which items
+  // are shown (and required to re-save) for a historical record. Picking a
+  // different project from the dropdown opts back into that project's live
+  // checklist, same as starting a new audit.
+  const isEditingSameProject = !!existing && projectId === existing.projectId;
+
   const missingClient = saveAttempted && !clientName;
   const missingProject = saveAttempted && !project;
   const missingAuditee = saveAttempted && !auditee.trim();
   const missingAuditor = saveAttempted && !auditor.trim();
-  const domainIds = project
-    ? Array.from(new Set(["core", ...(project.domainIds || [])]))
-    : projectMissing
-      ? Array.from(new Set(["core", ...(existing.domainIds || [])]))
+  const domainIds = isEditingSameProject
+    ? Array.from(new Set(["core", ...(existing.domainIds || [])]))
+    : project
+      ? Array.from(new Set(["core", ...(project.domainIds || [])]))
       : [];
 
   // Checklist items are grouped by domain, then by section (Manual/Automation/
@@ -72,13 +82,16 @@ export default function AuditFormView({
   // domain -> section -> category -> item sections. Each domain's items are
   // first narrowed to the project's type (Manual/Automation) — see
   // filterItemsForProjectType for the fallback when a domain has nothing in
-  // that type at all.
+  // that type at all. Audits don't store their own type snapshot, so when
+  // reopening one for edit, this intentionally skips that filter rather
+  // than guess wrong and hide previously-answered items — it can show a
+  // few extra items beyond what was originally required, but never fewer.
   const sections = useMemo(() => {
     const groups = [];
     domainIds.forEach((did) => {
       const domain = domains.find((d) => d.id === did);
       if (!domain) return;
-      const domainItems = filterItemsForProjectType(items.filter((it) => it.domainId === did), project?.type);
+      const domainItems = filterItemsForProjectType(items.filter((it) => it.domainId === did), isEditingSameProject ? undefined : project?.type);
       const bySection = [];
       domainItems.forEach((it) => {
         const section = it.section || "Manual";
@@ -97,7 +110,7 @@ export default function AuditFormView({
       groups.push({ domain, bySection });
     });
     return groups;
-  }, [domainIds, domains, items, project?.type]);
+  }, [domainIds, domains, items, project?.type, isEditingSameProject]);
 
   const allItems = useMemo(
     () => sections.flatMap((s) => s.bySection.flatMap((sec) => sec.categories.flatMap((c) => c.items))),

@@ -5,9 +5,10 @@ export default async function handler(req, res) {
 
   if (req.method === "PUT") {
     const { name, client, domainIds, type } = req.body || {};
+    if (!name || !name.trim()) return res.status(400).json({ error: "name is required" });
     const { data, error } = await supabaseAdmin
       .from("projects")
-      .update({ name, client, domain_ids: domainIds || [], type: type === "Automation" ? "Automation" : "Manual" })
+      .update({ name: name.trim(), client: (client || "").trim(), domain_ids: domainIds || [], type: type === "Automation" ? "Automation" : "Manual" })
       .eq("id", id)
       .select()
       .single();

@@ -1,25 +1,26 @@
 import { AlertTriangle, FileDown, X } from "lucide-react";
 import { pct, scoreColor, scoreFor } from "../../lib/scoring";
 import { STATUS_COLOR } from "./constants";
-import { filterItemsForProjectType, quarterLabel } from "./utils";
+import { quarterLabel } from "./utils";
 import { styles } from "./styles";
 
-export default function ReportView({ audit, items, domains, projects, onBack }) {
+export default function ReportView({ audit, items, domains, onBack }) {
   const missing = [];
   if (!audit.auditee?.trim()) missing.push("Auditee");
   if (!audit.auditor?.trim()) missing.push("Auditor");
   if (!audit.answeredCount) missing.push("checklist answers");
   const isIncomplete = missing.length > 0;
 
-  // Mirrors the same Manual/Automation type filter the audit form applied
-  // when this audit was taken, so the report doesn't list questions (as
-  // unanswered) that were never actually part of the checklist.
-  const project = projects.find((p) => p.id === audit.projectId);
-
+  // Audits don't store their own Manual/Automation type snapshot, and the
+  // project's type can change after the audit was taken (see AuditFormView's
+  // isEditingSameProject), so filtering by the project's *current* type here
+  // could silently drop a category that was actually answered at the time.
+  // Show every item in each recorded domain instead — complete, if
+  // occasionally a little broader than the original checklist.
   const groups = (audit.domainIds || [])
     .map((did) => {
       const domain = domains.find((d) => d.id === did);
-      const domainItems = filterItemsForProjectType(items.filter((it) => it.domainId === did), project?.type);
+      const domainItems = items.filter((it) => it.domainId === did);
       const byCat = [];
       domainItems.forEach((it) => {
         let bucket = byCat.find((x) => x.category === it.category);
@@ -63,15 +64,22 @@ export default function ReportView({ audit, items, domains, projects, onBack }) 
           <div><b>Coverage:</b> {audit.answeredCount}/{audit.totalCount} items</div>
         </div>
         {groups.length > 0 && (() => {
+          // Each category's slice is sized by its share of the checklist's
+          // total item weight (never zero for a category that has items),
+          // and colored by its score — sizing the slices by score itself
+          // (the previous approach) gave a 0%-scoring category a zero-width
+          // segment, silently dropping the worst-performing category from
+          // the chart entirely.
           const catScores = groups.flatMap(({ domain, categories }) =>
             categories.map((cat) => ({
               key: `${domain.id}::${cat.category}`,
               domain,
               category: cat.category,
+              weight: cat.items.reduce((sum, it) => sum + (it.weight || 0), 0),
               score: scoreFor(cat.items, audit.answers),
             }))
           );
-          const total = catScores.reduce((sum, c) => sum + (c.score || 0), 0);
+          const totalWeight = catScores.reduce((sum, c) => sum + c.weight, 0);
           const r = 46, strokeWidth = 22, gap = 3;
           const circumference = 2 * Math.PI * r;
           let cumulative = 0;
@@ -80,11 +88,11 @@ export default function ReportView({ audit, items, domains, projects, onBack }) 
               <div style={{ ...styles.reportCatHeader, fontSize: 14, borderBottom: "2px solid #1a1a1a" }}>Score by Category</div>
               <div style={styles.reportPieWrap}>
                 <svg width="120" height="120" viewBox="0 0 120 120" style={{ flexShrink: 0 }}>
-                  {total === 0 ? (
+                  {totalWeight === 0 ? (
                     <circle cx="60" cy="60" r={r} fill="none" stroke="#e9e4da" strokeWidth={strokeWidth} />
                   ) : (
-                    catScores.map(({ key, score }) => {
-                      const segmentRaw = ((score || 0) / total) * circumference;
+                    catScores.map(({ key, weight, score }) => {
+                      const segmentRaw = (weight / totalWeight) * circumference;
                       const segment = Math.max(segmentRaw - gap, 0.001);
                       const dashoffset = -cumulative;
                       cumulative += segmentRaw;

@@ -32,7 +32,7 @@ export default async function handler(req, res) {
     .insert({
       id: uid(), domain_id: domainId, section: (section && section.trim()) || "Manual",
       category: category.trim(), question: item.trim(),
-      weight: weight || 3, type: type || "Mandatory",
+      weight: Number(weight) >= 1 && Number(weight) <= 5 ? Number(weight) : 3, type: type || "Mandatory",
     })
     .select()
     .single();

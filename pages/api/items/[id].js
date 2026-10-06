@@ -5,9 +5,10 @@ export default async function handler(req, res) {
 
   if (req.method === "PUT") {
     const { section, category, item, weight, type } = req.body || {};
+    const clampedWeight = Number(weight) >= 1 && Number(weight) <= 5 ? Number(weight) : 3;
     const { data, error } = await supabaseAdmin
       .from("checklist_items")
-      .update({ section, category, question: item, weight, type })
+      .update({ section, category, question: item, weight: clampedWeight, type })
       .eq("id", id)
       .select()
       .single();
