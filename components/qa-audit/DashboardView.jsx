@@ -17,10 +17,19 @@ export default function DashboardView({ audits, projects }) {
   // audits should drive coverage, average score, and the rankings below.
   const completedAudits = audits.filter((a) => !isDraftAudit(a));
 
+  // An audit's projectName is a snapshot from when it was saved, so a
+  // later project rename (or a Manual/Automation retype) leaves old
+  // audits pointing at a name that no longer exists in the Projects
+  // list. Resolve the live name by ID wherever the project still
+  // exists, and group by ID too — grouping by name alone would also
+  // incorrectly merge two different projects that happen to share one.
+  const projectNameById = Object.fromEntries(projects.map((p) => [p.id, p.name]));
+  const resolveProjectName = (a) => projectNameById[a.projectId] || a.projectName || "Untitled";
+
   const projectStats = {};
   completedAudits.forEach((a) => {
-    const key = a.projectName || "Untitled";
-    if (!projectStats[key]) projectStats[key] = { count: 0, scoreSum: 0, scoreCount: 0 };
+    const key = a.projectId || a.projectName || "Untitled";
+    if (!projectStats[key]) projectStats[key] = { name: resolveProjectName(a), count: 0, scoreSum: 0, scoreCount: 0 };
     projectStats[key].count += 1;
     if (a.score !== null && a.score !== undefined) {
       projectStats[key].scoreSum += a.score;
@@ -31,7 +40,7 @@ export default function DashboardView({ audits, projects }) {
   // Only projects with at least one scored audit can be ranked by score.
   const scoredProjectRows = Object.entries(projectStats)
     .filter(([, s]) => s.scoreCount > 0)
-    .map(([name, s]) => ({ name, avgScore: s.scoreSum / s.scoreCount }));
+    .map(([key, s]) => ({ key, name: s.name, avgScore: s.scoreSum / s.scoreCount }));
   const topScorers = [...scoredProjectRows].sort((a, b) => b.avgScore - a.avgScore).slice(0, RANKED_PROJECTS_LIMIT);
   const lowScorers = [...scoredProjectRows].sort((a, b) => a.avgScore - b.avgScore).slice(0, RANKED_PROJECTS_LIMIT);
 
@@ -108,7 +117,7 @@ export default function DashboardView({ audits, projects }) {
               <div style={styles.templateCatLabel}>Top scorers</div>
               <div style={styles.barList}>
                 {topScorers.map((row) => (
-                  <div key={`top-${row.name}`} style={styles.barRow}>
+                  <div key={`top-${row.key}`} style={styles.barRow}>
                     <span style={styles.barLabel} title={row.name}>{row.name}</span>
                     <div style={styles.barTrack}>
                       <div
@@ -128,7 +137,7 @@ export default function DashboardView({ audits, projects }) {
               <div style={{ ...styles.templateCatLabel, marginTop: 16 }}>Needs attention</div>
               <div style={styles.barList}>
                 {lowScorers.map((row) => (
-                  <div key={`low-${row.name}`} style={styles.barRow}>
+                  <div key={`low-${row.key}`} style={styles.barRow}>
                     <span style={styles.barLabel} title={row.name}>{row.name}</span>
                     <div style={styles.barTrack}>
                       <div
@@ -193,7 +202,7 @@ export default function DashboardView({ audits, projects }) {
             </div>
             {recentAudits.map((a) => (
               <div key={a.id} style={styles.tableRow}>
-                <span style={styles.tableProject}>{a.projectName || "Untitled"}</span>
+                <span style={styles.tableProject}>{resolveProjectName(a)}</span>
                 <span>{quarterLabel(a.date)}</span>
                 <span>{a.auditee}</span>
                 <span>{a.auditor}</span>
