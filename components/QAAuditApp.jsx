@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ClipboardList, FolderKanban, History, KeyRound, Layers } from "lucide-react";
 import { api } from "./qa-audit/apiClient";
 import { css, styles } from "./qa-audit/styles";
+import { auditedProjectIds } from "./qa-audit/utils";
 import AuditFormView from "./qa-audit/AuditFormView";
 import ChangePasswordView from "./qa-audit/ChangePasswordView";
 import DashboardView from "./qa-audit/DashboardView";
@@ -15,7 +16,7 @@ import TemplatesView from "./qa-audit/TemplatesView";
 // ./qa-audit/ — see that folder for the checklist form, dashboard, history,
 // projects, templates, and report screens.
 export default function QAAuditApp() {
-  const [view, setView] = useState("form");
+  const [view, setView] = useState("dashboard");
   const [ready, setReady] = useState(false);
   const [loadError, setLoadError] = useState(null);
   const [bootTick, setBootTick] = useState(0);
@@ -231,8 +232,8 @@ export default function QAAuditApp() {
           )}
         </nav>
         <div style={styles.sideStat}>
-          <div style={styles.sideStatLabel}>Projects · Audits</div>
-          <div style={styles.sideStatValue}>{projects.length} · {audits.length}</div>
+          <div style={styles.sideStatLabel}>Projects · Audited</div>
+          <div style={styles.sideStatValue}>{projects.length} · {auditedProjectIds(projects, audits).size}</div>
         </div>
         <button
           className="ghostBtn"

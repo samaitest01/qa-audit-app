@@ -33,6 +33,22 @@ export function isDraftAudit(audit) {
   return (audit.totalCount || 0) > (audit.answeredCount || 0);
 }
 
+// Distinct projects with at least one completed (non-draft) audit — the
+// single source of truth for "how many projects are audited", shared by the
+// sidebar quick-stat and the Dashboard's coverage ring so they can't drift
+// into showing two different numbers for what looks like the same question
+// (a project audited more than once, or an audit record with no matching
+// project, would otherwise throw off a count kept separately in each place).
+export function auditedProjectIds(projects, audits) {
+  const projectIds = new Set(projects.map((p) => p.id));
+  return new Set(
+    audits
+      .filter((a) => !isDraftAudit(a))
+      .map((a) => a.projectId)
+      .filter((id) => projectIds.has(id))
+  );
+}
+
 export function groupCounts(items, keyFn) {
   return items.reduce((acc, item) => {
     const key = keyFn(item);

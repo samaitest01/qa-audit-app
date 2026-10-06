@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Award, Clock, ClipboardList, FolderKanban, History, Percent } from "lucide-react";
 import { pct, scoreColor } from "../../lib/scoring";
-import { isDraftAudit, quarterLabel } from "./utils";
+import { auditedProjectIds as getAuditedProjectIds, isDraftAudit, quarterLabel } from "./utils";
 import { styles } from "./styles";
 
 const COVERAGE_RING_RADIUS = 22;
@@ -52,11 +52,9 @@ export default function DashboardView({ audits, projects }) {
   // Coverage: how many of the current projects have at least one audit,
   // vs. how many have never been audited yet.
   const totalProjectCount = projects.length;
-  const auditedProjectIds = new Set(
-    completedAudits.map((a) => a.projectId).filter((id) => projects.some((p) => p.id === id))
-  );
-  const auditedProjectCount = auditedProjectIds.size;
-  const notAuditedProjects = projects.filter((p) => !auditedProjectIds.has(p.id)).sort((a, b) => a.name.localeCompare(b.name));
+  const auditedIds = getAuditedProjectIds(projects, audits);
+  const auditedProjectCount = auditedIds.size;
+  const notAuditedProjects = projects.filter((p) => !auditedIds.has(p.id)).sort((a, b) => a.name.localeCompare(b.name));
   const coverageRatio = totalProjectCount ? auditedProjectCount / totalProjectCount : null;
   const coverageRingFill = coverageRatio === null ? 0 : Math.max(0, Math.min(1, coverageRatio));
 
