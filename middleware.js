@@ -1,41 +1,46 @@
 import { NextResponse } from "next/server";
 
 const COOKIE_NAME = "qa_auth";
+const ROLES = ["admin", "auditor"];
 
-// Edge runtime doesn't have Node's `crypto` module, so this uses Web Crypto
-// (available globally) to compute the same HMAC that pages/api/auth/login.js
-// computes with Node's crypto — the two must produce identical hex output.
-async function expectedToken() {
-  const secret = process.env.SESSION_SECRET;
-  if (!secret) {
-    return null;
-  }
-  const enc = new TextEncoder();
-  const key = await crypto.subtle.importKey("raw", enc.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-  const sig = await crypto.subtle.sign("HMAC", key, enc.encode("authenticated"));
-  return Array.from(new Uint8Array(sig)).map((b) => b.toString(16).padStart(2, "0")).join("");
-}
+// Only these need to be reachable without a session: the login page itself,
+// and the two auth endpoints that establish/clear one. Everything else
+// under /api/auth (change-password, me) goes through the normal checks
+// below like any other route — change-password in particular needs the
+// admin-only gate, which a blanket "/api/auth" bypass would skip entirely.
+const PUBLIC_PATHS = ["/login", "/api/auth/login", "/api/auth/logout"];
 
-export async function middleware(req) {
+// Projects, Domains & Templates, and item/checklist management are
+// Admin-only — Auditors can read this data (via /api/data) to fill out
+// audits, but can't create/edit/delete it. All of these routes are
+// mutation-only (POST/PUT/DELETE, no GET), so gating the whole prefix
+// never blocks Auditors from the reads they need.
+const ADMIN_ONLY_PREFIXES = ["/api/projects", "/api/domains", "/api/items", "/api/auth/change-password"];
+
+export function middleware(req) {
   const { pathname } = req.nextUrl;
 
-  if (pathname === "/login" || pathname.startsWith("/api/auth") || pathname.startsWith("/_next") || pathname === "/favicon.ico") {
+  if (PUBLIC_PATHS.includes(pathname) || pathname.startsWith("/_next") || pathname === "/favicon.ico") {
     return NextResponse.next();
   }
 
-  const cookie = req.cookies.get(COOKIE_NAME)?.value;
-  const expected = await expectedToken();
-  const ok = expected && cookie && cookie === expected;
+  const role = req.cookies.get(COOKIE_NAME)?.value;
+  const authed = ROLES.includes(role);
 
-  if (ok) return NextResponse.next();
-
-  if (pathname.startsWith("/api")) {
-    return new NextResponse(JSON.stringify({ error: "Not authenticated" }), { status: 401, headers: { "content-type": "application/json" } });
+  if (!authed) {
+    if (pathname.startsWith("/api")) {
+      return new NextResponse(JSON.stringify({ error: "Not authenticated" }), { status: 401, headers: { "content-type": "application/json" } });
+    }
+    const loginUrl = new URL("/login", req.url);
+    return NextResponse.redirect(loginUrl);
   }
 
-  const base = req.nextUrl.origin || req.url;
-  const loginUrl = new URL("/login", base);
-  return NextResponse.redirect(loginUrl);
+  const adminOnly = ADMIN_ONLY_PREFIXES.some((p) => pathname.startsWith(p));
+  if (adminOnly && role !== "admin") {
+    return new NextResponse(JSON.stringify({ error: "Admin access required." }), { status: 403, headers: { "content-type": "application/json" } });
+  }
+
+  return NextResponse.next();
 }
 
 export const config = {

@@ -19,6 +19,8 @@ export default function QAAuditApp() {
   const [ready, setReady] = useState(false);
   const [loadError, setLoadError] = useState(null);
   const [bootTick, setBootTick] = useState(0);
+  const [role, setRole] = useState(null);
+  const isAdmin = role === "admin";
 
   const [domains, setDomains] = useState([]);
   const [items, setItems] = useState([]);
@@ -48,6 +50,8 @@ export default function QAAuditApp() {
     setLoadError(null);
     (async () => {
       try {
+        const me = await fetch("/api/auth/me").then((r) => (r.ok ? r.json() : { role: null }));
+        if (!cancelled) setRole(me.role);
         await reloadAll();
         if (!cancelled) setReady(true);
       } catch (e) {
@@ -59,6 +63,17 @@ export default function QAAuditApp() {
     })();
     return () => { cancelled = true; };
   }, [bootTick, reloadAll]);
+
+  // Auditors only get the audit-taking views — if their current view is an
+  // Admin-only one (e.g. landing back on a stale "projects" view from a
+  // previous Admin session in the same browser), bounce to the dashboard.
+  // The real enforcement is server-side (middleware 403s the mutating
+  // APIs); this just keeps the UI from showing a dead end.
+  useEffect(() => {
+    if (role && role !== "admin" && ["projects", "templates", "password"].includes(view)) {
+      setView("dashboard");
+    }
+  }, [role, view]);
 
   // ---- domain/template mutations ----
   const addDomain = async (name, description) => {
@@ -186,7 +201,9 @@ export default function QAAuditApp() {
           <div style={styles.brandMark}>QA</div>
           <div>
             <div style={styles.brandTitle}>Audit Console</div>
-            <div style={styles.brandSub}>Multi-domain QA program</div>
+            <div style={styles.brandSub}>
+              {role ? `${role[0].toUpperCase()}${role.slice(1)}` : "Multi-domain QA program"}
+            </div>
           </div>
         </div>
         <nav style={styles.nav}>
@@ -199,15 +216,19 @@ export default function QAAuditApp() {
           <button className={`navBtn ${view === "history" ? "navBtnActive" : ""}`} onClick={() => setView("history")}>
             <History size={16} /> Audit History
           </button>
-          <button className={`navBtn ${view === "projects" ? "navBtnActive" : ""}`} onClick={() => setView("projects")}>
-            <FolderKanban size={16} /> Projects
-          </button>
-          <button className={`navBtn ${view === "templates" ? "navBtnActive" : ""}`} onClick={() => setView("templates")}>
-            <Layers size={16} /> Domains & Templates
-          </button>
-          <button className={`navBtn ${view === "password" ? "navBtnActive" : ""}`} onClick={() => setView("password")}>
-            <KeyRound size={16} /> Change Password
-          </button>
+          {isAdmin && (
+            <>
+              <button className={`navBtn ${view === "projects" ? "navBtnActive" : ""}`} onClick={() => setView("projects")}>
+                <FolderKanban size={16} /> Projects
+              </button>
+              <button className={`navBtn ${view === "templates" ? "navBtnActive" : ""}`} onClick={() => setView("templates")}>
+                <Layers size={16} /> Domains & Templates
+              </button>
+              <button className={`navBtn ${view === "password" ? "navBtnActive" : ""}`} onClick={() => setView("password")}>
+                <KeyRound size={16} /> Change Password
+              </button>
+            </>
+          )}
         </nav>
         <div style={styles.sideStat}>
           <div style={styles.sideStatLabel}>Projects · Audits</div>
@@ -245,17 +266,17 @@ export default function QAAuditApp() {
         {view === "report" && reportAudit && (
           <ReportView audit={reportAudit} items={items} domains={domains} onBack={() => setView("history")} />
         )}
-        {view === "projects" && (
+        {view === "projects" && isAdmin && (
           <ProjectsView projects={projects} domains={domains} onSave={saveProject} onDelete={deleteProject} />
         )}
-        {view === "templates" && (
+        {view === "templates" && isAdmin && (
           <TemplatesView
             domains={domains} items={items}
             onAddDomain={addDomain} onDeleteDomain={deleteDomain}
             onAddItem={addItem} onBulkImport={bulkImportItems} onUpdateItem={updateItem} onDeleteItem={deleteItem}
           />
         )}
-        {view === "password" && <ChangePasswordView showToast={showToast} />}
+        {view === "password" && isAdmin && <ChangePasswordView showToast={showToast} />}
       </main>
       {toast && <div style={styles.toast}>{toast}</div>}
     </div>
