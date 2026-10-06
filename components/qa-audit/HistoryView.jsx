@@ -4,7 +4,7 @@ import { pct, scoreColor } from "../../lib/scoring";
 import { isDraftAudit, quarterLabel } from "./utils";
 import { styles } from "./styles";
 
-export default function HistoryView({ audits, onOpen, onDelete, onReport }) {
+export default function HistoryView({ audits, onOpen, onDelete, onReport, canDelete }) {
   const [confirmId, setConfirmId] = useState(null);
   const [query, setQuery] = useState("");
 
@@ -65,9 +65,9 @@ export default function HistoryView({ audits, onOpen, onDelete, onReport }) {
               <span style={styles.rowActions}>
                 <button className="iconBtn" title="Open report" onClick={() => onReport(a)}><FileDown size={14} /></button>
                 <button className="iconBtn" title="Edit" onClick={() => onOpen(a)}><ClipboardList size={14} /></button>
-                {confirmId === a.id
+                {canDelete && (confirmId === a.id
                   ? <button className="iconBtn iconBtnDanger" onClick={() => { onDelete(a.id); setConfirmId(null); }}><CheckCircle2 size={14} /></button>
-                  : <button className="iconBtn" onClick={() => setConfirmId(a.id)}><Trash2 size={14} /></button>}
+                  : <button className="iconBtn" onClick={() => setConfirmId(a.id)}><Trash2 size={14} /></button>)}
               </span>
             </div>
           );

@@ -36,7 +36,11 @@ export function middleware(req) {
   }
 
   const adminOnly = ADMIN_ONLY_PREFIXES.some((p) => pathname.startsWith(p));
-  if (adminOnly && role !== "admin") {
+  // Auditors can create/edit audits (POST/PUT /api/audits) — that's the
+  // whole point of the role — but not delete them; only DELETE is
+  // Admin-only here, unlike the prefixes above which block every method.
+  const deletingAudit = pathname.startsWith("/api/audits") && req.method === "DELETE";
+  if ((adminOnly || deletingAudit) && role !== "admin") {
     return new NextResponse(JSON.stringify({ error: "Admin access required." }), { status: 403, headers: { "content-type": "application/json" } });
   }
 

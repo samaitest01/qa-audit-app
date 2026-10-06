@@ -261,6 +261,7 @@ export default function QAAuditApp() {
             onOpen={(a) => { setActiveAuditId(a.id); setView("form"); }}
             onDelete={deleteAudit}
             onReport={(a) => { setReportAudit(a); setView("report"); }}
+            canDelete={isAdmin}
           />
         )}
         {view === "report" && reportAudit && (
