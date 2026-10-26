@@ -7,15 +7,24 @@ export default function ProjectsView({ projects, domains, onSave, onDelete }) {
   const [editing, setEditing] = useState(null);
   const [confirmId, setConfirmId] = useState(null);
   const [query, setQuery] = useState("");
+  const [clientFilter, setClientFilter] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
+
+  const clients = useMemo(
+    () => Array.from(new Set(projects.map((p) => p.client).filter(Boolean))).sort(),
+    [projects]
+  );
 
   const filteredProjects = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return projects;
     return projects.filter((p) => {
+      if (clientFilter && p.client !== clientFilter) return false;
+      if (typeFilter && (p.type || "Manual") !== typeFilter) return false;
+      if (!q) return true;
       const domainNames = (p.domainIds || []).map((did) => domains.find((x) => x.id === did)?.name || "").join(" ");
       return [p.name, p.client, p.type, domainNames].join(" ").toLowerCase().includes(q);
     });
-  }, [projects, domains, query]);
+  }, [projects, domains, query, clientFilter, typeFilter]);
 
   return (
     <div>
@@ -31,14 +40,32 @@ export default function ProjectsView({ projects, domains, onSave, onDelete }) {
         </button>
       </div>
 
-      <div style={{ ...styles.searchWrap, marginTop: 0, marginBottom: 18, maxWidth: 360 }}>
-        <Search size={14} color="#7c8794" />
-        <input
-          style={styles.searchInput}
-          placeholder="Search projects by name, client, or domain…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 18 }}>
+        <div style={{ ...styles.searchWrap, marginTop: 0, maxWidth: 360 }}>
+          <Search size={14} color="#7c8794" />
+          <input
+            style={styles.searchInput}
+            placeholder="Search projects by name, client, or domain…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </div>
+        <select value={clientFilter} onChange={(e) => setClientFilter(e.target.value)} style={{ maxWidth: 200 }}>
+          <option value="">All clients</option>
+          {clients.map((c) => (
+            <option key={c} value={c}>{c}</option>
+          ))}
+        </select>
+        <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} style={{ maxWidth: 180 }}>
+          <option value="">All types</option>
+          <option value="Manual">Manual</option>
+          <option value="Automation">Automation</option>
+        </select>
+        {(clientFilter || typeFilter || query) && (
+          <button className="ghostBtn" onClick={() => { setClientFilter(""); setTypeFilter(""); setQuery(""); }}>
+            Clear filters
+          </button>
+        )}
       </div>
 
       {editing && (
@@ -51,7 +78,7 @@ export default function ProjectsView({ projects, domains, onSave, onDelete }) {
       )}
 
       {filteredProjects.length === 0 && (
-        <p style={styles.subtle}>No projects match "{query}".</p>
+        <p style={styles.subtle}>No projects match the current search and filters.</p>
       )}
 
       <div style={styles.cardGrid}>
