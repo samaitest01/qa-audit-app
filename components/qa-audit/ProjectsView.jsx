@@ -3,12 +3,17 @@ import { CheckCircle2, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import Field from "./Field";
 import { styles } from "./styles";
 
+const STATUSES = ["Active", "Hold", "Closed"];
+const statusClass = (status) =>
+  status === "Hold" ? "statusHold" : status === "Closed" ? "statusClosed" : "statusActive";
+
 export default function ProjectsView({ projects, domains, onSave, onDelete }) {
   const [editing, setEditing] = useState(null);
   const [confirmId, setConfirmId] = useState(null);
   const [query, setQuery] = useState("");
   const [clientFilter, setClientFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
 
   const clients = useMemo(
     () => Array.from(new Set(projects.map((p) => p.client).filter(Boolean))).sort(),
@@ -20,11 +25,12 @@ export default function ProjectsView({ projects, domains, onSave, onDelete }) {
     return projects.filter((p) => {
       if (clientFilter && p.client !== clientFilter) return false;
       if (typeFilter && (p.type || "Manual") !== typeFilter) return false;
+      if (statusFilter && (p.status || "Active") !== statusFilter) return false;
       if (!q) return true;
       const domainNames = (p.domainIds || []).map((did) => domains.find((x) => x.id === did)?.name || "").join(" ");
       return [p.name, p.client, p.type, domainNames].join(" ").toLowerCase().includes(q);
     });
-  }, [projects, domains, query, clientFilter, typeFilter]);
+  }, [projects, domains, query, clientFilter, typeFilter, statusFilter]);
 
   return (
     <div>
@@ -35,7 +41,7 @@ export default function ProjectsView({ projects, domains, onSave, onDelete }) {
             {projects.length} project{projects.length !== 1 ? "s" : ""}. Each holds one or more domains, which decide its audit checklist.
           </p>
         </div>
-        <button className="primaryBtn" onClick={() => setEditing({ name: "", client: "", domainIds: [], type: "Manual" })}>
+        <button className="primaryBtn" onClick={() => setEditing({ name: "", client: "", domainIds: [], type: "Manual", status: "Active" })}>
           <Plus size={15} /> New project
         </button>
       </div>
@@ -50,6 +56,12 @@ export default function ProjectsView({ projects, domains, onSave, onDelete }) {
             onChange={(e) => setQuery(e.target.value)}
           />
         </div>
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={{ maxWidth: 160 }}>
+          <option value="">All statuses</option>
+          {STATUSES.map((s) => (
+            <option key={s} value={s}>{s}</option>
+          ))}
+        </select>
         <select value={clientFilter} onChange={(e) => setClientFilter(e.target.value)} style={{ maxWidth: 200 }}>
           <option value="">All clients</option>
           {clients.map((c) => (
@@ -61,8 +73,8 @@ export default function ProjectsView({ projects, domains, onSave, onDelete }) {
           <option value="Manual">Manual</option>
           <option value="Automation">Automation</option>
         </select>
-        {(clientFilter || typeFilter || query) && (
-          <button className="ghostBtn" onClick={() => { setClientFilter(""); setTypeFilter(""); setQuery(""); }}>
+        {(clientFilter || typeFilter || statusFilter || query) && (
+          <button className="ghostBtn" onClick={() => { setClientFilter(""); setTypeFilter(""); setStatusFilter(""); setQuery(""); }}>
             Clear filters
           </button>
         )}
@@ -86,7 +98,10 @@ export default function ProjectsView({ projects, domains, onSave, onDelete }) {
           <div key={p.id} style={styles.projectCard}>
             <div style={styles.projectCardTop}>
               <div>
-                <div style={styles.projectName}>{p.name}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={styles.projectName}>{p.name}</div>
+                  <span className={`statusPill ${statusClass(p.status)}`} style={styles.statusPill}>{p.status || "Active"}</span>
+                </div>
                 <div style={styles.subtle}>{p.client}</div>
               </div>
               <div style={{ display: "flex", gap: 6 }}>
@@ -126,6 +141,7 @@ function ProjectEditor({ project, domains, onCancel, onSave }) {
   const [client, setClient] = useState(project.client || "");
   const [domainIds, setDomainIds] = useState(project.domainIds || []);
   const [type, setType] = useState(project.type === "Automation" ? "Automation" : "Manual");
+  const [status, setStatus] = useState(STATUSES.includes(project.status) ? project.status : "Active");
   const assignable = domains.filter((d) => !d.builtin);
 
   const toggle = (id) =>
@@ -144,6 +160,13 @@ function ProjectEditor({ project, domains, onCancel, onSave }) {
           <select value={type} onChange={(e) => setType(e.target.value)}>
             <option>Manual</option>
             <option>Automation</option>
+          </select>
+        </Field>
+        <Field label="Status">
+          <select value={status} onChange={(e) => setStatus(e.target.value)}>
+            {STATUSES.map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
           </select>
         </Field>
       </div>
@@ -168,7 +191,7 @@ function ProjectEditor({ project, domains, onCancel, onSave }) {
         <button
           className="primaryBtn"
           onClick={() => {
-            if (name.trim()) onSave({ ...project, name: name.trim(), client: client.trim(), domainIds, type });
+            if (name.trim()) onSave({ ...project, name: name.trim(), client: client.trim(), domainIds, type, status });
           }}
         >
           Save project
