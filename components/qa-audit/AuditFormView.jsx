@@ -4,7 +4,7 @@ import { pct, scoreColor, scoreFor } from "../../lib/scoring";
 import { STATUSES, STATUS_COLOR } from "./constants";
 import Field from "./Field";
 import { styles } from "./styles";
-import { filterItemsForProjectType } from "./utils";
+import { filterItemsForProjectType, fiscalQuarterLabel, quarterOptions } from "./utils";
 
 export default function AuditFormView({
   domains, items, projects, audits,
@@ -19,6 +19,11 @@ export default function AuditFormView({
   const [auditee, setAuditee] = useState(existing?.auditee || "");
   const [auditor, setAuditor] = useState(existing?.auditor || "");
   const [date, setDate] = useState(existing?.date || new Date().toISOString().slice(0, 10));
+  // Quarter is chosen explicitly, not derived from the date — it defaults
+  // to today's real fiscal quarter for a new audit, or the stored quarter
+  // for an existing one (falling back to a date-derived guess for audits
+  // saved before this field existed).
+  const [quarter, setQuarter] = useState(existing?.quarter || (existing ? fiscalQuarterLabel(existing.date) : fiscalQuarterLabel(new Date())));
   const [answers, setAnswers] = useState(existing?.answers || {});
   const [openCategory, setOpenCategory] = useState(null);
   const [query, setQuery] = useState("");
@@ -36,6 +41,7 @@ export default function AuditFormView({
       setAuditee(existing.auditee || "");
       setAuditor(existing.auditor || "");
       setDate(existing.date || new Date().toISOString().slice(0, 10));
+      setQuarter(existing.quarter || fiscalQuarterLabel(existing.date));
       setAnswers(existing.answers || {});
     }
   }, [activeAuditId]); // eslint-disable-line
@@ -159,6 +165,7 @@ export default function AuditFormView({
         auditee,
         auditor,
         date,
+        quarter,
         answers,
         score: overallScore,
         answeredCount,
@@ -194,6 +201,7 @@ export default function AuditFormView({
           auditee,
           auditor,
           date,
+          quarter,
           answers,
           score: overallScore,
           answeredCount,
@@ -215,6 +223,7 @@ export default function AuditFormView({
     setAuditee("");
     setAuditor("");
     setDate(new Date().toISOString().slice(0, 10));
+    setQuarter(fiscalQuarterLabel(new Date()));
     setAnswers({});
   };
 
@@ -307,6 +316,15 @@ export default function AuditFormView({
         </Field>
         <Field label="Audit date">
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)} disabled={projectMissing} />
+        </Field>
+        <Field label="Quarter">
+          <select value={quarter} onChange={(e) => setQuarter(e.target.value)} disabled={projectMissing}>
+            {/* The selected quarter can fall outside the default window — e.g. editing an
+                older audit — so it's unioned in rather than dropped from the list. */}
+            {Array.from(new Set([...quarterOptions(), quarter])).sort().map((q) => (
+              <option key={q} value={q}>{q}</option>
+            ))}
+          </select>
         </Field>
       </div>
 

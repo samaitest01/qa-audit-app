@@ -1,14 +1,3 @@
-export function quarterLabel(dateString) {
-  try {
-    const date = new Date(dateString);
-    if (Number.isNaN(date)) return "Unknown";
-    const q = Math.floor(date.getMonth() / 3) + 1;
-    return `Q${q} ${date.getFullYear()}`;
-  } catch {
-    return "Unknown";
-  }
-}
-
 // A project is typed Manual or Automation; a checklist item's Section is
 // Manual, Automation, or "Shared (Manual & Automation)" (always included).
 // Within a single domain, if NONE of its items match the project's type,
@@ -47,6 +36,56 @@ export function auditedProjectIds(projects, audits) {
       .map((a) => a.projectId)
       .filter((id) => projectIds.has(id))
   );
+}
+
+// This program's fiscal year runs April–March, and audits are grouped by
+// fiscal quarter (FY-2026 = Apr 2026–Mar 2027, so FY-2026 Q1 = Apr–Jun
+// 2026 … Q4 = Jan–Mar 2027) rather than calendar quarters.
+const FISCAL_YEAR_START_MONTH = 3; // April, 0-indexed (Jan=0)
+
+export function fiscalQuarterLabel(dateString) {
+  const date = new Date(dateString);
+  if (Number.isNaN(date)) return "Unknown";
+  const month = date.getMonth();
+  const year = date.getFullYear();
+  const fiscalYear = month >= FISCAL_YEAR_START_MONTH ? year : year - 1;
+  const offset = (month - FISCAL_YEAR_START_MONTH + 12) % 12;
+  const quarter = Math.floor(offset / 3) + 1;
+  return `FY-${fiscalYear} Q${quarter}`;
+}
+
+// Quarter picker options for the audit form: a bounded, chronological
+// window around today (a few quarters back for late-logging a recent
+// audit, a few ahead for scheduling), rather than open-ended free text.
+export function quarterOptions(before = 4, after = 4, today = new Date()) {
+  const labels = [];
+  for (let i = -before; i <= after; i++) {
+    const d = new Date(today.getFullYear(), today.getMonth() + i * 3, 1);
+    labels.push(fiscalQuarterLabel(d));
+  }
+  return Array.from(new Set(labels));
+}
+
+// The quarter an audit counts toward is whatever was explicitly chosen on
+// the audit form — not recomputed from its date, since the two can
+// legitimately differ (e.g. logged a few days late but still meant for
+// last quarter's cycle). Audits saved before the Quarter field existed
+// fall back to a date-derived guess.
+export function auditQuarterLabel(audit) {
+  return audit.quarter || fiscalQuarterLabel(audit.date);
+}
+
+// Groups completed (non-draft) audits by project, ordered oldest-first, so
+// each project's Nth entry is its Nth audit regardless of calendar phase —
+// no fixed Phase I–IV columns, a project just has as many entries as it's
+// actually been audited.
+export function auditsByProject(projects, audits) {
+  const byProject = new Map(projects.map((p) => [p.id, []]));
+  audits
+    .filter((a) => !isDraftAudit(a) && byProject.has(a.projectId))
+    .forEach((a) => byProject.get(a.projectId).push(a));
+  byProject.forEach((list) => list.sort((a, b) => (a.date || "").localeCompare(b.date || "")));
+  return byProject;
 }
 
 export function groupCounts(items, keyFn) {

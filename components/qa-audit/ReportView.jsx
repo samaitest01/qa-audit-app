@@ -1,7 +1,7 @@
 import { AlertTriangle, FileDown, X } from "lucide-react";
 import { pct, scoreColor, scoreFor } from "../../lib/scoring";
 import { STATUS_COLOR } from "./constants";
-import { quarterLabel } from "./utils";
+import { auditQuarterLabel } from "./utils";
 import { styles } from "./styles";
 
 export default function ReportView({ audit, items, domains, onBack }) {
@@ -60,7 +60,7 @@ export default function ReportView({ audit, items, domains, onBack }) {
         <div style={styles.reportMetaGrid}>
           <div><b>Auditee:</b> {audit.auditee}</div>
           <div><b>Auditor:</b> {audit.auditor}</div>
-          <div><b>Quarter:</b> {quarterLabel(audit.date)}</div>
+          <div><b>Quarter:</b> {auditQuarterLabel(audit)}</div>
           <div><b>Coverage:</b> {audit.answeredCount}/{audit.totalCount} items</div>
         </div>
         {groups.length > 0 && (() => {

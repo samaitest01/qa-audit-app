@@ -46,11 +46,12 @@ export default async function handler(req, res) {
     })),
     projects: projects.data.map((p) => ({
       id: p.id, name: p.name, client: p.client, domainIds: p.domain_ids || [], type: p.type || "Manual",
+      status: p.status || "Active",
     })),
     audits: audits.data.map((a) => ({
       id: a.id, projectId: a.project_id, projectName: a.project_name, client: a.client,
       domainIds: a.domain_ids || [], auditee: a.auditee, auditor: a.auditor,
-      date: a.audit_date, answers: a.answers || {}, score: a.score,
+      date: a.audit_date, quarter: a.quarter, answers: a.answers || {}, score: a.score,
       answeredCount: a.answered_count, totalCount: a.total_count, savedAt: a.saved_at,
     })),
   });

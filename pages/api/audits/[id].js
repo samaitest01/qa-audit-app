@@ -11,7 +11,7 @@ export default async function handler(req, res) {
     const row = {
       project_id: b.projectId, project_name: b.projectName, client: b.client,
       domain_ids: b.domainIds || [], auditee: b.auditee, auditor: b.auditor,
-      audit_date: b.date, answers: b.answers || {}, score: b.score,
+      audit_date: b.date, quarter: b.quarter || null, answers: b.answers || {}, score: b.score,
       answered_count: b.answeredCount, total_count: b.totalCount,
       saved_at: new Date().toISOString(),
     };
@@ -20,7 +20,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       id: data.id, projectId: data.project_id, projectName: data.project_name, client: data.client,
       domainIds: data.domain_ids || [], auditee: data.auditee, auditor: data.auditor,
-      date: data.audit_date, answers: data.answers || {}, score: data.score,
+      date: data.audit_date, quarter: data.quarter, answers: data.answers || {}, score: data.score,
       answeredCount: data.answered_count, totalCount: data.total_count, savedAt: data.saved_at,
     });
   }

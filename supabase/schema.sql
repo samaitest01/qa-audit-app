@@ -32,13 +32,15 @@ create table if not exists projects (
   client text,
   domain_ids jsonb not null default '[]',
   type text not null default 'Manual',
+  status text not null default 'Active',
   created_at timestamptz not null default now()
 );
 
--- For a database that already had projects before the `type` column
--- existed, `create table if not exists` above is a no-op — run this to
--- actually add the column. Safe to re-run.
+-- For a database that already had projects before the `type`/`status`
+-- columns existed, `create table if not exists` above is a no-op — run
+-- these to actually add the columns. Safe to re-run.
 alter table projects add column if not exists type text not null default 'Manual';
+alter table projects add column if not exists status text not null default 'Active';
 
 create table if not exists audits (
   id text primary key,
@@ -49,6 +51,7 @@ create table if not exists audits (
   auditee text,
   auditor text,
   audit_date date,
+  quarter text,
   answers jsonb not null default '{}',
   score numeric,
   answered_count int,
@@ -57,6 +60,13 @@ create table if not exists audits (
 );
 create index if not exists audits_project_idx on audits(project_id);
 create index if not exists audits_saved_at_idx on audits(saved_at desc);
+
+-- For a database that already had audits before the `quarter` column
+-- existed, `create table if not exists` above is a no-op — run this to
+-- actually add the column. Safe to re-run. `quarter` is chosen explicitly
+-- by whoever starts the audit (e.g. "FY-2026 Q2") rather than derived from
+-- audit_date, since the two can legitimately differ.
+alter table audits add column if not exists quarter text;
 
 -- Stores the app's shared login password (hashed, never plaintext) plus
 -- any other simple app-wide settings later. Set via the app's own

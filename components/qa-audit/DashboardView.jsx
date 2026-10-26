@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Award, Clock, ClipboardList, FolderKanban, History, Percent } from "lucide-react";
 import { pct, scoreColor } from "../../lib/scoring";
-import { auditedProjectIds as getAuditedProjectIds, isDraftAudit, quarterLabel } from "./utils";
+import { auditedProjectIds as getAuditedProjectIds, auditQuarterLabel, isDraftAudit } from "./utils";
 import { styles } from "./styles";
 
 const COVERAGE_RING_RADIUS = 22;
@@ -206,7 +206,7 @@ export default function DashboardView({ audits, projects }) {
             {recentAudits.map((a) => (
               <div key={a.id} style={styles.tableRow}>
                 <span style={styles.tableProject}>{resolveProjectName(a)}</span>
-                <span>{quarterLabel(a.date)}</span>
+                <span>{auditQuarterLabel(a)}</span>
                 <span>{a.auditee}</span>
                 <span>{a.auditor}</span>
                 <span>{a.date}</span>

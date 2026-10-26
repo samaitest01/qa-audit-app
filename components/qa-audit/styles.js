@@ -113,6 +113,33 @@ export const styles = {
   reportItemText: { flex: 1 },
   reportStatusText: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, width: 60, textAlign: "right" },
   reportComment: { fontSize: 11, color: "#666", fontStyle: "italic", width: 200, textAlign: "left" },
+
+  // ---- project status pill + filters ----
+  statusPill: { display: "inline-flex", alignItems: "center", gap: 5, fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4, padding: "3px 9px", borderRadius: 99 },
+
+  // ---- Audit History: list/matrix toggle + phase scope ----
+  viewToggle: { display: "inline-flex", background: "#171f28", border: "1px solid #232d38", borderRadius: 9, padding: 3, gap: 3 },
+  phaseScopeRow: { display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", margin: "18px 0 20px" },
+  phaseScopeLabel: { fontSize: 11, color: "#7c8794", textTransform: "uppercase", letterSpacing: 0.5 },
+  phaseSeg: { display: "inline-flex", background: "#171f28", border: "1px solid #232d38", borderRadius: 9, padding: 3, gap: 3 },
+
+  // ---- Phase matrix table ----
+  matrixWrap: { border: "1px solid #1f2933", borderRadius: 14, overflow: "hidden" },
+  matrixScroll: { overflowX: "auto" },
+  matrixTable: { borderCollapse: "collapse", width: "100%", minWidth: 760, fontSize: 13 },
+  matrixTh: { background: "#10161f", color: "#7c8794", fontSize: 10.5, textTransform: "uppercase", letterSpacing: 0.4, fontWeight: 600, textAlign: "left", padding: "12px 16px", borderBottom: "1px solid #1f2933", whiteSpace: "nowrap" },
+  matrixThAudit: { textAlign: "center" },
+  matrixTd: { padding: "13px 16px", borderTop: "1px solid #1c2430", verticalAlign: "middle" },
+  matrixRowProject: { fontWeight: 600, fontSize: 13.5 },
+  matrixRowClient: { color: "#9aa3b6", fontSize: 12, marginTop: 1 },
+  matrixAuditCell: { textAlign: "center", minWidth: 112 },
+  matrixPill: { display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 2, padding: "7px 10px", borderRadius: 10, minWidth: 72 },
+  matrixScore: { fontFamily: "'IBM Plex Mono', monospace", fontWeight: 700, fontSize: 14, fontVariantNumeric: "tabular-nums" },
+  matrixMeta: { fontSize: 10, color: "#7c8794", fontVariantNumeric: "tabular-nums" },
+  matrixNc: { fontSize: 10, fontWeight: 600, marginTop: 1, color: "#7c8794" },
+  matrixEmpty: { color: "#5b6572", fontSize: 12 },
+  matrixPending: { display: "inline-block", padding: "6px 12px", borderRadius: 99, border: "1px dashed #2a3440", color: "#7c8794", fontSize: 11.5 },
+  infoCallout: { background: "#171f28", border: "1px solid #232d38", borderRadius: 12, padding: "14px 16px", marginTop: 18, fontSize: 12.5, color: "#9aa3b6", lineHeight: 1.5 },
 };
 
 export const css = `
@@ -150,6 +177,25 @@ input[type=checkbox] { width:auto !important; }
 }
 .spinner { width:28px; height:28px; border:3px solid #232d38; border-top-color:#e8a33d; border-radius:50%; margin:0 auto; animation:spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+.statusPill::before { content:""; width:6px; height:6px; border-radius:99px; background:currentColor; }
+.statusActive { background:rgba(111,185,143,0.14); color:#6fb98f; }
+.statusHold { background:rgba(224,181,104,0.14); color:#e0b568; }
+.statusClosed { background:rgba(154,163,182,0.14); color:#9aa3b6; }
+
+.viewToggleBtn, .phaseSegBtn { background:transparent; border:none; color:#9aa3b6; font-size:12.5px; font-weight:600; padding:7px 13px; border-radius:7px; cursor:pointer; font-family:inherit; white-space:nowrap; }
+.viewToggleBtn:hover, .phaseSegBtn:hover { color:#eef1f4; }
+.viewToggleBtnActive { background:#1d2632; color:#e8a33d; }
+.phaseSegBtnActive { background:linear-gradient(135deg,#e8a33d,#c97a2e); color:#12181f; }
+
+.matrixRowDim { opacity:0.35; }
+.matrixCellOutOfScope { opacity:0.3; }
+.pillGreen { background:rgba(111,185,143,0.14); }
+.pillGreen .matrixScore { color:#6fb98f; }
+.pillAmber { background:rgba(224,181,104,0.14); }
+.pillAmber .matrixScore { color:#e0b568; }
+.pillRed { background:rgba(208,114,109,0.14); }
+.pillRed .matrixScore { color:#d0726d; }
 
 /* Below this width the fixed 240px sidebar leaves too little room for
    content, so the layout switches from a side-by-side split (each pane

@@ -259,6 +259,7 @@ export default function QAAuditApp() {
         {view === "history" && (
           <HistoryView
             audits={audits}
+            projects={projects}
             onOpen={(a) => { setActiveAuditId(a.id); setView("form"); }}
             onDelete={deleteAudit}
             onReport={(a) => { setReportAudit(a); setView("report"); }}
